@@ -1,107 +1,200 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useStore } from '@/lib/store'
-import { RolUsuario } from '@/types'
+import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, Store, UsersRound, UtensilsCrossed, X } from 'lucide-react'
+import { useStore, type PermisoAdmin } from '@/lib/store'
+import type { RolUsuario } from '@/types'
+import MessaWordmark from '@/components/messa-wordmark'
+import AdminThemeToggle from '@/components/admin-theme-toggle'
+import { limpiarIconoLegacy } from '@/lib/utils'
 
-const PERMISOS: { prefix: string; roles: RolUsuario[] }[] = [
-  { prefix: '/admin/tema', roles: ['creator'] },
-  { prefix: '/admin/fidelidad', roles: ['creator'] },
-  { prefix: '/admin/usuarios', roles: ['creator', 'admin'] },
-  { prefix: '/admin/pagos', roles: ['creator', 'admin'] },
-  { prefix: '/admin/cierre', roles: ['creator', 'admin'] },
-  { prefix: '/admin/mesas', roles: ['creator', 'admin'] },
-  { prefix: '/admin/sucursales', roles: ['creator', 'admin'] },
-  { prefix: '/admin/finanzas', roles: ['creator', 'admin'] },
-  { prefix: '/admin/integraciones', roles: ['creator', 'admin'] },
-  { prefix: '/admin/carta', roles: ['creator', 'admin', 'editor'] },
-  { prefix: '/admin/stock', roles: ['creator', 'admin', 'editor'] },
+const PERMISO_RUTA: { prefix: string; permiso: PermisoAdmin }[] = [
+  { prefix: '/admin/tema', permiso: 'identidad' },
+  { prefix: '/admin/fidelidad', permiso: 'fidelidad' },
+  { prefix: '/admin/usuarios', permiso: 'usuarios' },
+  { prefix: '/admin/pagos', permiso: 'cobros' },
+  { prefix: '/admin/cierre', permiso: 'caja' },
+  { prefix: '/admin/mesas', permiso: 'salon' },
+  { prefix: '/admin/sucursales', permiso: 'sucursales' },
+  { prefix: '/admin/finanzas', permiso: 'finanzas' },
+  { prefix: '/admin/integraciones', permiso: 'delivery' },
+  { prefix: '/admin/carta', permiso: 'carta' },
+  { prefix: '/admin/stock', permiso: 'inventario' },
+  { prefix: '/dashboard', permiso: 'salon' },
+  { prefix: '/cocina', permiso: 'pedidos' },
+  { prefix: '/reservas', permiso: 'reservas' },
 ]
 
 const ROL_LABEL: Record<RolUsuario, { label: string; color: string }> = {
-  creator: { label: '👑 Creador', color: '#D4AF37' },
-  admin: { label: '🏢 Dueño', color: '#3B82F6' },
-  editor: { label: '✏️ Editor', color: '#22C55E' },
+  creator: { label: 'Creador', color: '#d7b567' },
+  admin: { label: 'Administrador', color: '#94b9db' },
+  editor: { label: 'Editor', color: '#82bd99' },
+  staff: { label: 'Staff', color: '#d4cdbf' },
+}
+
+type DockItem = { href: string; label: string; Icon: typeof LayoutDashboard; exact?: boolean }
+
+const OPERACION: DockItem[] = [
+  { href: '/admin', label: 'Resumen', Icon: LayoutDashboard, exact: true },
+  { href: '/admin/carta', label: 'Carta', Icon: UtensilsCrossed },
+  { href: '/dashboard', label: 'Salón', Icon: MapPinned, exact: true },
+  { href: '/cocina', label: 'Ver pedidos', Icon: ChefHat, exact: true },
+  { href: '/admin/stock', label: 'Inventario', Icon: Package },
+  { href: '/reservas', label: 'Reservas', Icon: CalendarDays, exact: true },
+  { href: '/admin/finanzas', label: 'Finanzas', Icon: ChartLine },
+]
+
+const GESTION: DockItem[] = [
+  { href: '/admin/pagos', label: 'Cobros', Icon: CreditCard },
+  { href: '/admin/cierre', label: 'Cierre de caja', Icon: ReceiptText },
+  { href: '/admin/integraciones', label: 'Delivery', Icon: PackageSearch },
+  { href: '/admin/fidelidad', label: 'Fidelidad', Icon: Crown },
+  { href: '/admin/sucursales', label: 'Sucursales', Icon: Building2 },
+  { href: '/admin/usuarios', label: 'Usuarios', Icon: UsersRound },
+  { href: '/admin/tema', label: 'Identidad', Icon: Palette },
+]
+
+function isCurrentPath(pathname: string, item: DockItem) {
+  return item.exact ? pathname === item.href : pathname.startsWith(item.href)
+}
+
+function permisoDeItem(item: DockItem): PermisoAdmin {
+  if (item.href === '/admin') return 'resumen'
+  return PERMISO_RUTA.find(regla => item.href.startsWith(regla.prefix) || regla.prefix.startsWith(item.href))?.permiso || 'resumen'
+}
+
+function DockLink({ item, pathname }: { item: DockItem; pathname: string }) {
+  const active = isCurrentPath(pathname, item)
+  return (
+    <Link
+      href={item.href}
+      className={`admin-dock-link${active ? ' active' : ''}`}
+      aria-label={item.label}
+      aria-current={active ? 'page' : undefined}
+      data-tooltip={item.label}
+    >
+      <item.Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+      <span>{item.label}</span>
+    </Link>
+  )
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual } = useStore()
+  const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual, notificaciones, marcarNotificacionLeida, permisosAdmin, initStore } = useStore()
   const [verificando, setVerificando] = useState(true)
+  const [sucursalesAbiertas, setSucursalesAbiertas] = useState(false)
+  const [alertasAbiertas, setAlertasAbiertas] = useState(false)
 
-  // La sesión NUNCA se confía desde localStorage — se verifica contra la
-  // cookie firmada del servidor en cada carga del panel admin.
   useEffect(() => {
+    initStore()
     fetch('/api/auth/me')
-      .then(r => {
-  if (r.ok) return r.json();
-  throw new Error('No autorizado');
-})
-.then(data => {
-  // Acá tipamos 'data' como 'any' temporalmente para que TypeScript no moleste con las propiedades
-  const userData = data as any;
-  setSesionAdmin({ 
-    nombre: userData.nombre, 
-    email: userData.email, 
-    rol: userData.rol // (o lo que siga en tu código)
-  });
-})
-.catch(() => setSesionAdmin(null))
+      .then(response => {
+        if (response.ok) return response.json()
+        throw new Error('No autorizado')
+      })
+      .then((data: { nombre: string; email: string; rol: RolUsuario }) => setSesionAdmin({ nombre: data.nombre, email: data.email, rol: data.rol }))
+      .catch(() => setSesionAdmin(null))
       .finally(() => setVerificando(false))
-    // eslint-disable-next-line
-  }, [])
+  }, [initStore, setSesionAdmin])
 
-  if (verificando) {
-    return <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p style={{ color: '#707070', fontSize: 13 }}>Verificando sesión...</p></div>
-  }
+  if (verificando) return <div className="admin-access-state">Verificando sesión…</div>
 
   if (!sesionAdmin) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
-        <p style={{ fontSize: 44, margin: '0 0 16px' }}>🔒</p>
-        <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>Acceso restringido</h2>
-        <p style={{ color: '#707070', fontSize: 14, margin: '0 0 24px', maxWidth: 280 }}>Necesitás iniciar sesión para acceder al panel de administración.</p>
-        <Link href="/login" className="btn-gold" style={{ textDecoration: 'none', padding: '12px 28px', borderRadius: 14, fontSize: 14, fontWeight: 600 }}>Iniciar sesión</Link>
-        <Link href="/" style={{ textDecoration: 'none', marginTop: 16, color: '#707070', fontSize: 13 }}>← Volver al inicio</Link>
-      </div>
-    )
+    return <div className="admin-access-state"><CircleUserRound size={38} /><h2>Acceso restringido</h2><p>Necesitás iniciar sesión para acceder al centro de control.</p><Link href="/login" className="admin-primary-link">Iniciar sesión</Link><Link href="/">Volver al inicio</Link></div>
   }
 
-  const regla = PERMISOS.find(p => pathname.startsWith(p.prefix))
-  const permitido = !regla || regla.roles.includes(sesionAdmin.rol)
-
-  if (!permitido) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
-        <p style={{ fontSize: 44, margin: '0 0 16px' }}>⛔</p>
-        <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>No tenés permisos</h2>
-        <p style={{ color: '#707070', fontSize: 14, margin: '0 0 24px', maxWidth: 280 }}>Tu rol ({ROL_LABEL[sesionAdmin.rol].label}) no tiene acceso a esta sección.</p>
-        <Link href="/admin" style={{ textDecoration: 'none', background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: '10px 20px', color: '#fff', fontSize: 13 }}>← Volver al panel</Link>
-      </div>
-    )
+  const regla = PERMISO_RUTA.find(permiso => pathname.startsWith(permiso.prefix))
+  if (regla && !permisosAdmin[sesionAdmin.rol]?.includes(regla.permiso)) {
+    return <div className="admin-access-state"><h2>No tenés permisos</h2><p>Tu rol de {ROL_LABEL[sesionAdmin.rol].label} no tiene acceso a esta sección.</p><Link href="/admin" className="admin-primary-link">Volver al panel</Link></div>
   }
 
   const puedeCambiarSucursal = sesionAdmin.rol === 'creator' || sesionAdmin.rol === 'admin'
+  const sucursalActual = sucursales.find(sucursal => sucursal.id === sucursalActualId)
+  const esStaff = sesionAdmin.rol === 'staff'
+  const permisosDelRol = permisosAdmin[sesionAdmin.rol] || []
+  const operacionVisible = OPERACION.filter(item => permisosDelRol.includes(permisoDeItem(item)))
+  const gestionVisible = GESTION.filter(item => permisosDelRol.includes(permisoDeItem(item)))
+  const alertasPendientes = notificaciones.filter(notificacion => !notificacion.leida)
+  const moduloActivo = [...OPERACION, ...GESTION].find(item => isCurrentPath(pathname, item))
+  const moduloExpandido = pathname !== '/admin'
 
   return (
-    <div>
-      <div style={{ background: '#050505', borderBottom: '1px solid #1C1C1C', padding: '8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span style={{ fontSize: 11, color: ROL_LABEL[sesionAdmin.rol].color, fontWeight: 600, whiteSpace: 'nowrap' }}>{ROL_LABEL[sesionAdmin.rol].label}</span>
-          <span style={{ fontSize: 11, color: '#484848', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {sesionAdmin.nombre}</span>
+    <div className="admin-shell">
+      <div className="admin-ambient" aria-hidden="true" />
+
+      <div className="admin-dock-stack">
+      <aside className="admin-sidebar" aria-label="Navegación administrativa">
+        <Link href="/admin" className="admin-dock-brand" aria-label="MESSA, ir al resumen" data-tooltip="MESSA">
+          <MessaWordmark />
+        </Link>
+        <span className="admin-dock-divider" aria-hidden="true" />
+        <nav className="admin-dock-nav" aria-label="Operación">
+          {operacionVisible.map(item => <DockLink key={item.href} item={item} pathname={pathname} />)}
+        </nav>
+        {!esStaff && gestionVisible.length > 0 && <><span className="admin-dock-divider admin-dock-divider--management" aria-hidden="true" /><nav className="admin-dock-nav admin-dock-nav--management" aria-label="Gestión">{gestionVisible.map(item => <DockLink key={item.href} item={item} pathname={pathname} />)}</nav></>}
+        <div className="admin-dock-footer">
+          <Link href="/vista" className="admin-dock-link" aria-label="Ver carta pública" data-tooltip="Ver carta pública"><ExternalLink size={18} aria-hidden="true" /><span>Ver carta pública</span></Link>
+          <button className="admin-dock-link" onClick={async () => { await logoutAdmin(); router.push('/') }} aria-label="Cerrar sesión" data-tooltip="Cerrar sesión"><LogOut size={18} aria-hidden="true" /><span>Cerrar sesión</span></button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {puedeCambiarSucursal && sucursales.length > 1 && (
-            <select value={sucursalActualId} onChange={e => setSucursalActual(e.target.value)} style={{ background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 8, padding: '4px 8px', color: '#D4AF37', fontSize: 11, maxWidth: 140 }}>
-              {sucursales.map(s => <option key={s.id} value={s.id}>📍 {s.nombre}</option>)}
-            </select>
-          )}
-          <button onClick={async () => { await logoutAdmin(); router.push('/') }} style={{ background: 'transparent', border: 'none', color: '#707070', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Salir</button>
-        </div>
+      </aside>
+      <AdminThemeToggle />
       </div>
-      {children}
+
+      <main className="admin-main">
+        <header className="admin-topbar">
+          <div className="admin-topbar__identity">
+            <MessaWordmark />
+            <span className="admin-service-status"><i />Servicio activo</span>
+          </div>
+          <nav className="admin-topbar__nav" aria-label="Accesos principales">
+            {operacionVisible.slice(1, 5).map(item => <Link key={item.href} href={item.href} className={isCurrentPath(pathname, item) ? 'active' : ''}>{item.label}</Link>)}
+          </nav>
+          <div className="admin-topbar__actions">
+            <span className="admin-topbar__role" style={{ color: ROL_LABEL[sesionAdmin.rol].color }}>{ROL_LABEL[sesionAdmin.rol].label}</span>
+            {puedeCambiarSucursal && sucursales.length > 1 && <div className="admin-popover-control">
+              <button type="button" className="admin-branch-control" onClick={() => { setSucursalesAbiertas(value => !value); setAlertasAbiertas(false) }} aria-haspopup="menu" aria-expanded={sucursalesAbiertas}><Store size={15} aria-hidden="true" /><span>{sucursalActual?.nombre || 'Sucursal'}</span><ChevronDown size={13} aria-hidden="true" /></button>
+              {sucursalesAbiertas && <div className="admin-topbar-popover admin-branch-menu" role="menu" aria-label="Elegir sucursal">{sucursales.map(sucursal => <button type="button" role="menuitem" key={sucursal.id} className={sucursal.id === sucursalActualId ? 'active' : ''} onClick={() => { setSucursalActual(sucursal.id); setSucursalesAbiertas(false) }}><span><b>{sucursal.nombre}</b><small>{sucursal.direccion || 'Sucursal MESSA'}</small></span>{sucursal.id === sucursalActualId && <Check size={15} />}</button>)}</div>}
+            </div>}
+            <div className="admin-popover-control">
+              <button type="button" className="admin-alert-button" onClick={() => { setAlertasAbiertas(value => !value); setSucursalesAbiertas(false) }} aria-label="Abrir notificaciones" aria-haspopup="dialog" aria-expanded={alertasAbiertas}><Bell size={17} />{alertasPendientes.length > 0 && <span>{alertasPendientes.length}</span>}</button>
+              {alertasAbiertas && <div className="admin-topbar-popover admin-notification-popover" role="dialog" aria-label="Notificaciones">
+                <header><span><b>Actividad reciente</b><small>{alertasPendientes.length} pendientes</small></span><button type="button" onClick={() => setAlertasAbiertas(false)} aria-label="Cerrar notificaciones"><X size={15} /></button></header>
+                <div>{notificaciones.length ? notificaciones.slice(0, 6).map(notificacion => <button type="button" key={notificacion.id} className={notificacion.leida ? 'read' : ''} onClick={() => marcarNotificacionLeida(notificacion.id)}><i className={`admin-notification-dot admin-notification-dot--${notificacion.tipo}`} /><span><b>{limpiarIconoLegacy(notificacion.mensaje)}</b><small>{new Date(notificacion.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</small></span>{!notificacion.leida && <Check size={14} />}</button>) : <p>No hay notificaciones todavía.</p>}</div>
+              </div>}
+            </div>
+            <span className="admin-profile" title={sesionAdmin.nombre}><CircleUserRound size={18} aria-hidden="true" /><span>{sesionAdmin.nombre}</span></span>
+          </div>
+        </header>
+
+        <nav className="admin-quick-dock" aria-label="Acciones operativas rápidas">
+          {permisosDelRol.includes('carta') && <Link href="/admin/carta"><UtensilsCrossed size={16} />Editar carta</Link>}
+          {permisosDelRol.includes('salon') && <Link href="/dashboard"><MapPinned size={16} />Abrir salón</Link>}
+          {permisosDelRol.includes('pedidos') && <Link href="/cocina"><ChefHat size={16} />Ver pedidos</Link>}
+          {permisosDelRol.includes('reservas') && <Link href="/reservas"><CalendarDays size={16} />Reservas</Link>}
+          {permisosDelRol.includes('caja') && <Link href="/admin/cierre"><ReceiptText size={16} />Cierre</Link>}
+          {permisosDelRol.includes('inventario') && <Link href="/admin/stock"><Bell size={16} />Inventario</Link>}
+        </nav>
+
+        <div className={`admin-content-frame${moduloExpandido ? ' is-module' : ''}`}>
+          {moduloExpandido && (
+            <button
+              type="button"
+              className="admin-module-close"
+              onClick={() => router.push('/admin')}
+              aria-label={`Cerrar ${moduloActivo?.label || 'módulo'} y volver al resumen`}
+              title="Volver al resumen"
+            >
+              <X size={18} aria-hidden="true" />
+              <span>Cerrar</span>
+            </button>
+          )}
+          <div className="admin-content" key={pathname}>{children}</div>
+        </div>
+      </main>
     </div>
   )
 }

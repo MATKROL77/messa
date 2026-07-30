@@ -1,6 +1,9 @@
 'use client'
+
 import { useState } from 'react'
-import Link from 'next/link'
+import { Check, Palette, Save, Sparkles, Type } from 'lucide-react'
+import { AdminButton, AdminPanel, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
+import MessaWordmark from '@/components/messa-wordmark'
 import { useStore } from '@/lib/store'
 
 const FUENTES = [
@@ -11,12 +14,12 @@ const FUENTES = [
 ]
 
 const PALETAS = [
-  { nombre: 'Dorado Premium', primario: '#D4AF37', fondo: '#0A0A0A' },
-  { nombre: 'Esmeralda', primario: '#10B981', fondo: '#0A0F0C' },
-  { nombre: 'Borgoña', primario: '#B91C1C', fondo: '#0F0A0A' },
-  { nombre: 'Zafiro', primario: '#3B82F6', fondo: '#0A0C14' },
-  { nombre: 'Cobre', primario: '#C2703D', fondo: '#0F0C0A' },
-  { nombre: 'Violeta Real', primario: '#8B5CF6', fondo: '#0C0A0F' },
+  { nombre: 'MESSA dorado', primario: '#C69A3F', fondo: '#F4F0E7' },
+  { nombre: 'Oliva editorial', primario: '#8B8452', fondo: '#F2EFE5' },
+  { nombre: 'Borgoña cálido', primario: '#985F59', fondo: '#F3EDEA' },
+  { nombre: 'Azul piedra', primario: '#627F91', fondo: '#EDF0F1' },
+  { nombre: 'Cobre', primario: '#A96D47', fondo: '#F2ECE6' },
+  { nombre: 'Nocturno', primario: '#D2B467', fondo: '#181713' },
 ]
 
 export default function TemaPage() {
@@ -24,102 +27,79 @@ export default function TemaPage() {
   const [form, setForm] = useState(tema)
   const [toast, setToast] = useState('')
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
-  const handleGuardar = () => { actualizarTema(form); showToast('Tema aplicado a toda la plataforma ✓') }
-  const aplicarPaleta = (p: typeof PALETAS[0]) => setForm({ ...form, color_primario: p.primario, color_fondo: p.fondo })
+  const showToast = (message: string) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 2500)
+  }
+
+  const handleGuardar = () => {
+    actualizarTema(form)
+    showToast('Identidad aplicada')
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0A0A0A', paddingBottom: 40 }}>
-      {toast && <div className="fade-in" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: '#1C1C1C', border: '1px solid #383838', borderRadius: 100, padding: '10px 20px', fontSize: 13, color: '#fff', zIndex: 9999, whiteSpace: 'nowrap' }}>{toast}</div>}
+    <AdminWorkspace
+      eyebrow="Sistema de marca"
+      title="Identidad de MESSA"
+      description="Ajustá marca, paleta y tipografía sin perder consistencia entre carta, mesa y operación."
+      actions={<AdminButton tone="primary" icon={Save} onClick={handleGuardar}>Aplicar identidad</AdminButton>}
+    >
+      <AdminToast>{toast}</AdminToast>
 
-      <div style={{ background: '#0A0A0A', borderBottom: '1px solid #1C1C1C', padding: 16, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 className="font-titulos" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Identidad de Marca</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#707070' }}>Panel exclusivo del creador</p>
-          </div>
-          <Link href="/admin" style={{ textDecoration: 'none', background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#A0A0A0' }}>← Admin</Link>
-        </div>
-      </div>
-
-      <div style={{ padding: 16 }}>
-        <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 14, padding: 14, marginBottom: 20 }}>
-          <p style={{ margin: 0, fontSize: 12, color: '#707070', lineHeight: 1.6 }}>👑 Estos cambios se aplican <strong style={{ color: '#D4AF37' }}>en vivo a toda la plataforma</strong> — comensales y personal ven el nuevo diseño inmediatamente. Ideal para dar un look distinto a cada restaurante cliente que use este software (white-label).</p>
-        </div>
-
-        {/* Nombre de marca */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Nombre de la plataforma</p>
-          <input value={form.nombre_marca} onChange={e => setForm({ ...form, nombre_marca: e.target.value })} className="input-premium" placeholder="MenuFlow" />
-        </div>
-
-        {/* Emoji logo */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ícono / emoji de marca</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {['🍽️', '🍷', '🥩', '🍝', '⭐', '🔥', '👑', '🌟'].map(e => (
-              <button key={e} onClick={() => setForm({ ...form, logo_emoji: e })} style={{ width: 44, height: 44, borderRadius: 12, fontSize: 20, cursor: 'pointer', background: form.logo_emoji === e ? 'rgba(212,175,55,0.15)' : '#1C1C1C', border: form.logo_emoji === e ? '1px solid rgba(212,175,55,0.4)' : '1px solid #2A2A2A' }}>{e}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* Paletas predefinidas */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Paletas premium</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {PALETAS.map(p => (
-              <button key={p.nombre} onClick={() => aplicarPaleta(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, cursor: 'pointer', background: form.color_primario === p.primario ? `${p.primario}15` : '#141414', border: form.color_primario === p.primario ? `1px solid ${p.primario}60` : '1px solid #2A2A2A' }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: p.primario, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#fff' }}>{p.nombre}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Color personalizado */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-          <div>
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070' }}>Color de marca</p>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="color" value={form.color_primario} onChange={e => setForm({ ...form, color_primario: e.target.value })} style={{ width: 44, height: 40, borderRadius: 10, border: '1px solid #2A2A2A', background: 'transparent', cursor: 'pointer' }} />
-              <input value={form.color_primario} onChange={e => setForm({ ...form, color_primario: e.target.value })} className="input-premium" style={{ flex: 1 }} />
+      <div className="messa-brand-layout">
+        <div className="messa-brand-controls">
+          <AdminPanel eyebrow="Marca" title="Nombre visible" detail="Se aplica a los espacios que admiten marca blanca.">
+            <div className="messa-form-stack">
+              <label><span>Nombre de la plataforma</span><input value={form.nombre_marca} onChange={event => setForm(current => ({ ...current, nombre_marca: event.target.value }))} placeholder="MESSA" /></label>
             </div>
-          </div>
-          <div>
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070' }}>Color de fondo</p>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="color" value={form.color_fondo} onChange={e => setForm({ ...form, color_fondo: e.target.value })} style={{ width: 44, height: 40, borderRadius: 10, border: '1px solid #2A2A2A', background: 'transparent', cursor: 'pointer' }} />
-              <input value={form.color_fondo} onChange={e => setForm({ ...form, color_fondo: e.target.value })} className="input-premium" style={{ flex: 1 }} />
+          </AdminPanel>
+
+          <AdminPanel eyebrow="Color" title="Paletas editoriales" detail="Selecciones pensadas para mantener contraste en claro y oscuro.">
+            <div className="messa-palette-grid">
+              {PALETAS.map(paleta => {
+                const active = form.color_primario.toLowerCase() === paleta.primario.toLowerCase()
+                return (
+                  <button type="button" key={paleta.nombre} className={active ? 'active' : ''} onClick={() => setForm(current => ({ ...current, color_primario: paleta.primario, color_fondo: paleta.fondo }))}>
+                    <i style={{ '--brand-color': paleta.primario, '--brand-bg': paleta.fondo } as React.CSSProperties} />
+                    <span>{paleta.nombre}</span>
+                    {active && <Check size={15} />}
+                  </button>
+                )
+              })}
             </div>
+            <div className="messa-color-fields">
+              <label><span>Color de marca</span><div><input type="color" value={form.color_primario} onChange={event => setForm(current => ({ ...current, color_primario: event.target.value }))} /><input value={form.color_primario} onChange={event => setForm(current => ({ ...current, color_primario: event.target.value }))} /></div></label>
+              <label><span>Color de fondo</span><div><input type="color" value={form.color_fondo} onChange={event => setForm(current => ({ ...current, color_fondo: event.target.value }))} /><input value={form.color_fondo} onChange={event => setForm(current => ({ ...current, color_fondo: event.target.value }))} /></div></label>
+            </div>
+          </AdminPanel>
+
+          <AdminPanel eyebrow="Tipografía" title="Voz editorial" detail="La opción elegida se usa en títulos y momentos de marca.">
+            <div className="messa-font-list">
+              {FUENTES.map(font => {
+                const active = form.fuente_titulos === font.valor
+                return (
+                  <button type="button" key={font.valor} className={active ? 'active' : ''} onClick={() => setForm(current => ({ ...current, fuente_titulos: font.valor }))}>
+                    <Type size={17} />
+                    <span><b style={{ fontFamily: font.valor }}>{font.label}</b><small>{font.desc}</small></span>
+                    {active && <Check size={15} />}
+                  </button>
+                )
+              })}
+            </div>
+          </AdminPanel>
+        </div>
+
+        <AdminPanel eyebrow="Vista previa" title="Aplicación en vivo" className="messa-brand-preview-panel">
+          <div className="messa-brand-preview" style={{ background: form.color_fondo }}>
+            <span><Sparkles size={17} /></span>
+            <MessaWordmark />
+            <h2 style={{ color: form.color_primario, fontFamily: form.fuente_titulos }}>{form.nombre_marca || 'MESSA'}</h2>
+            <p>From mess to mesa.</p>
+            <button type="button" style={{ background: form.color_primario }}>Acción principal</button>
+            <div><Palette size={16} />Una identidad cuidada en cada punto de contacto.</div>
           </div>
-        </div>
-
-        {/* Tipografía */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Tipografía de títulos</p>
-          {FUENTES.map(f => (
-            <button key={f.valor} onClick={() => setForm({ ...form, fuente_titulos: f.valor })} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 14px', borderRadius: 12, marginBottom: 8, cursor: 'pointer', background: form.fuente_titulos === f.valor ? 'rgba(212,175,55,0.1)' : '#141414', border: form.fuente_titulos === f.valor ? '1px solid rgba(212,175,55,0.35)' : '1px solid #2A2A2A' }}>
-              <div style={{ textAlign: 'left' }}>
-                <p style={{ margin: 0, fontSize: 16, fontFamily: f.valor, color: '#fff' }}>{f.label}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#707070' }}>{f.desc}</p>
-              </div>
-              {form.fuente_titulos === f.valor && <span style={{ color: '#D4AF37' }}>✓</span>}
-            </button>
-          ))}
-        </div>
-
-        {/* Preview */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vista previa en vivo</p>
-          <div style={{ background: form.color_fondo, border: '1px solid #2A2A2A', borderRadius: 16, padding: 24, textAlign: 'center' }}>
-            <p style={{ fontSize: 32, margin: '0 0 8px' }}>{form.logo_emoji}</p>
-            <p style={{ fontFamily: form.fuente_titulos, fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 0 12px' }}>{form.nombre_marca}</p>
-            <button style={{ background: `linear-gradient(135deg, ${form.color_primario} 0%, ${form.color_primario}CC 100%)`, color: '#000', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 600 }}>Botón de ejemplo</button>
-          </div>
-        </div>
-
-        <button onClick={handleGuardar} className="btn-gold" style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', fontSize: 15, cursor: 'pointer' }}>Aplicar tema a toda la plataforma</button>
+        </AdminPanel>
       </div>
-    </div>
+    </AdminWorkspace>
   )
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "menuflow-app",
+  "name": "messa",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -10,11 +10,5 @@
   },
   "observability": {
     "enabled": true
-  },
-  "vars": {
-    "NEXT_PRIVATE_MINIMAL_MODE": "1",
-    "CREATOR_EMAIL": "matiascolimodio@gmail.com",
-    "NEXT_PUBLIC_SUPABASE_URL": "https://akrzumktubcyrgomwvip.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrcnp1bWt0dWJjeXJnb213dmlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NzcxOTUsImV4cCI6MjA5OTQ1MzE5NX0.j8oyrXmvU7Y0kWMZ2IHfujRLSHe0ZSvk9TaMz-GRAzk"
   }
 }

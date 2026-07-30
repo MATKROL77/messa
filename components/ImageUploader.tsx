@@ -1,12 +1,13 @@
 'use client'
 import { useState, useRef } from 'react'
+import { ImagePlus, X } from 'lucide-react'
 import PlatoImg from './PlatoImg'
 
-const MAX_DIMENSION = 1000 // px, lado más largo
-const CALIDAD_JPEG = 0.8
+const MAX_DIMENSION = 1600 // px, lado más largo
+const CALIDAD_WEBP = 0.86
 const MAX_BYTES_ORIGINAL = 15 * 1024 * 1024 // 15MB antes de comprimir
 
-// Comprime la imagen en el navegador (redimensiona + reencodea a JPEG) antes
+// Comprime la imagen en el navegador (redimensiona + reencodea a WebP) antes
 // de guardarla. Esto reduce drásticamente el peso que termina viviendo en
 // localStorage. Para producción real con muchos platos/fotos, lo correcto es
 // subir el archivo a un storage real (Supabase Storage o Cloudflare R2) y
@@ -29,7 +30,8 @@ function comprimirImagen(file: File): Promise<string> {
         const ctx = canvas.getContext('2d')
         if (!ctx) { reject(new Error('Canvas no soportado')); return }
         ctx.drawImage(img, 0, 0, width, height)
-        resolve(canvas.toDataURL('image/jpeg', CALIDAD_JPEG))
+        // WebP conserva el canal alfa de los assets recortados del catálogo.
+        resolve(canvas.toDataURL('image/webp', CALIDAD_WEBP))
       }
       img.src = reader.result as string
     }
@@ -68,7 +70,7 @@ export default function ImageUploader({ value, onChange }: { value: string; onCh
       {value && (
         <div style={{ position: 'relative', height: 140, borderRadius: 12, overflow: 'hidden', marginBottom: 10, border: '1px solid #2A2A2A' }}>
           <PlatoImg src={value} alt="preview" />
-          <button onClick={() => { onChange(''); setPesoFinal(null) }} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: 14 }}>✕</button>
+          <button type="button" aria-label="Quitar imagen" onClick={() => { onChange(''); setPesoFinal(null) }} style={{ alignItems: 'center', display: 'flex', justifyContent: 'center', position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer' }}><X size={15} /></button>
           {pesoFinal && <span style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, padding: '3px 8px', borderRadius: 100 }}>~{(pesoFinal / 1024).toFixed(0)} KB comprimida</span>}
         </div>
       )}
@@ -88,7 +90,7 @@ export default function ImageUploader({ value, onChange }: { value: string; onCh
           <p style={{ margin: 0, fontSize: 13, color: '#A0A0A0' }}>Comprimiendo imagen...</p>
         ) : (
           <>
-            <p style={{ margin: '0 0 4px', fontSize: 24 }}>📸</p>
+            <ImagePlus size={25} aria-hidden="true" style={{ color: '#c9a84f', marginBottom: 6 }} />
             <p style={{ margin: 0, fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>Arrastrá una imagen acá o tocá para elegir</p>
             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#707070' }}>Desde tu galería o cualquier carpeta · se comprime automáticamente</p>
           </>
@@ -106,7 +108,7 @@ export default function ImageUploader({ value, onChange }: { value: string; onCh
           placeholder="O pegá cualquier URL de imagen (https://...)"
           style={{ flex: 1, background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: '10px 14px', color: '#fff', fontSize: 13 }}
         />
-        <button onClick={() => { if (urlTemp.trim()) { onChange(urlTemp.trim()); setPesoFinal(null); setUrlTemp('') } }} style={{ padding: '8px 16px', borderRadius: 10, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>Usar URL</button>
+        <button type="button" onClick={() => { if (urlTemp.trim()) { onChange(urlTemp.trim()); setPesoFinal(null); setUrlTemp('') } }} style={{ padding: '8px 16px', borderRadius: 10, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>Usar URL</button>
       </div>
       <p style={{ margin: '8px 0 0', fontSize: 10, color: '#484848', lineHeight: 1.5 }}>Nota: las fotos comprimidas se guardan en el almacenamiento local del navegador. Para muchos platos con fotos propias, lo ideal a futuro es conectar Supabase Storage o R2 (ver LEEME.md).</p>
     </div>

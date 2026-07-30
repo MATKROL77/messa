@@ -7,6 +7,10 @@ export const formatPrecio = (precio: number): string => {
   }).format(precio)
 }
 
+export const formatPrecioCarta = (precio: number, precioPendiente?: boolean): string => {
+  return precioPendiente ? 'Precio a definir' : formatPrecio(precio)
+}
+
 export const generarId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
 }
@@ -39,4 +43,8 @@ export const clsx = (...classes: (string | boolean | undefined | null)[]): strin
 
 export const validarEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+}
+
+export const limpiarIconoLegacy = (texto: string): string => {
+  return texto.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, '').trimStart()
 }

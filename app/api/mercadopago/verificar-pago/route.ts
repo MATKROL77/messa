@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+interface MercadoPagoPayment {
+  id?: string | number
+  status?: string
+  transaction_amount?: number
+  external_reference?: string
+}
+
 // El cliente NUNCA se auto-marca como "pagado". Cuando Mercado Pago redirige
 // de vuelta a la app (back_urls.success), llega con un payment_id en la URL.
 // Este endpoint consulta a la API REAL de Mercado Pago con el Access Token
@@ -19,7 +26,7 @@ export async function GET(req: NextRequest) {
     })
     if (!res.ok) return NextResponse.json({ ok: false, error: 'No se pudo verificar el pago con Mercado Pago' }, { status: 502 })
 
-    const pago = await res.json() as any;
+    const pago = await res.json() as MercadoPagoPayment
     const aprobado = pago.status === 'approved'
 
     return NextResponse.json({

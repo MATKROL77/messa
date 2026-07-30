@@ -66,7 +66,9 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.json({ ok: true, rol: cuenta.rol, nombre: cuenta.nombre, email: cuenta.email })
   res.cookies.set('mf_session', token, {
     httpOnly: true,
-    secure: true,
+    // `Secure` requiere HTTPS. En localhost se usa HTTP para desarrollo;
+    // mantenerlo en true impediría que el navegador guarde la sesión local.
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 12,

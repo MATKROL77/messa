@@ -1,195 +1,118 @@
 'use client'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useStore } from '@/lib/store'
-import { Pedido } from '@/types'
-import { formatPrecio, tiempoTranscurrido, tiempoEnMinutos } from '@/lib/utils'
 
-type FiltroKDS = 'todos' | 'en_cocina' | 'listo' | 'entregado'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Check, ChefHat, CircleCheckBig, Clock3, PackageCheck, ReceiptText, Truck, X } from 'lucide-react'
+import AdminOperationShell from '@/components/admin-operation-shell'
+import { useStore } from '@/lib/store'
+import type { Pedido } from '@/types'
+import { formatPrecio, tiempoEnMinutos, tiempoTranscurrido } from '@/lib/utils'
+import { AdminButton, AdminEmpty, AdminMetric, AdminPanel, AdminSegmented, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
+import DishMedia from '@/components/menu/DishMedia'
+
+type Filtro = 'activos' | 'en_cocina' | 'listo' | 'entregado'
 
 export default function CocinaPage() {
-  const { pedidos, marcarPedidoEntregado, cancelarPedido, actualizarMesa, insumos, sucursalActualId, sucursales } = useStore()
-  const [filtro, setFiltro] = useState<FiltroKDS>('en_cocina')
-  const [pedidoExpandido, setPedidoExpandido] = useState<string | null>(null)
-  const [tick, setTick] = useState(0)
-  const criticos = insumos.filter(i => i.cantidad <= i.cantidad_critica && i.activo && i.sucursal_id === sucursalActualId)
-  const nombreSucursal = sucursales.find(s => s.id === sucursalActualId)?.nombre || ''
-
+  const { pedidos, marcarPedidoListo, marcarPedidoEntregado, cancelarPedido, insumos, sucursalActualId, sucursales } = useStore()
+  const [filtro, setFiltro] = useState<Filtro>('activos')
+  const [seleccionado, setSeleccionado] = useState<Pedido | null>(null)
+  const [toast, setToast] = useState('')
+  const [, tick] = useState(0)
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 15000)
-    return () => clearInterval(interval)
+    const interval = window.setInterval(() => tick(value => value + 1), 15000)
+    return () => window.clearInterval(interval)
   }, [])
 
-  const pedidosFiltrados = pedidos
-    .filter(p => p.sucursal_id === sucursalActualId)
-    .filter(p => {
-      if (filtro === 'todos') return p.estado !== 'cancelado'
-      return p.estado === filtro
-    })
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  const sucursal = sucursales.find(item => item.id === sucursalActualId)
+  const actuales = pedidos.filter(pedido => pedido.sucursal_id === sucursalActualId && pedido.estado !== 'cancelado')
+  const enCocina = actuales.filter(pedido => pedido.estado === 'en_cocina')
+  const listos = actuales.filter(pedido => pedido.estado === 'listo')
+  const entregados = actuales.filter(pedido => pedido.estado === 'entregado')
+  const urgentes = enCocina.filter(pedido => tiempoEnMinutos(pedido.created_at) >= 20)
+  const criticos = insumos.filter(item => item.sucursal_id === sucursalActualId && item.activo && item.cantidad <= item.cantidad_critica)
+  const filtrados = useMemo(() => actuales
+    .filter(pedido => filtro === 'activos' ? ['en_cocina', 'listo'].includes(pedido.estado) : pedido.estado === filtro)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [actuales, filtro])
 
-  const pedidosSucursal = pedidos.filter(p => p.sucursal_id === sucursalActualId)
-  const counts = {
-    en_cocina: pedidosSucursal.filter(p => p.estado === 'en_cocina').length,
-    listo:     pedidosSucursal.filter(p => p.estado === 'listo').length,
-    entregado: pedidosSucursal.filter(p => p.estado === 'entregado').length,
+  const showToast = (mensaje: string) => {
+    setToast(mensaje)
+    window.setTimeout(() => setToast(''), 2200)
   }
 
-  const urgencia = (p: Pedido) => {
-    const mins = tiempoEnMinutos(p.created_at)
-    if (mins > 30) return { color: '#EF4444', label: '🔴 Urgente' }
-    if (mins > 15) return { color: '#F59E0B', label: '🟡 Atención' }
-    return { color: '#22C55E', label: '🟢 Normal' }
+  const listo = (pedido: Pedido) => {
+    marcarPedidoListo(pedido.id)
+    setSeleccionado(null)
+    showToast(`Pedido de mesa ${pedido.mesa_numero} listo`)
   }
-
-  const handleMarcarListo = (pedidoId: string) => {
-    const p = pedidos.find(x => x.id === pedidoId)
-    if (!p) return
-    // update to 'listo'
-    actualizarMesa(p.mesa_id, 'pedido')
-    marcarPedidoEntregado(pedidoId)
+  const entregar = (pedido: Pedido) => {
+    marcarPedidoEntregado(pedido.id)
+    setSeleccionado(null)
+    showToast(`Pedido de mesa ${pedido.mesa_numero} entregado`)
+  }
+  const cancelar = (pedido: Pedido) => {
+    cancelarPedido(pedido.id)
+    setSeleccionado(null)
+    showToast('Pedido cancelado')
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0A0A0A', paddingBottom: 20 }}>
-      {/* Header */}
-      <div style={{ background: '#0A0A0A', borderBottom: '1px solid #1C1C1C', padding: '16px', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Cocina · KDS</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#707070' }}>📍 {nombreSucursal} · Kitchen Display System</p>
-          </div>
-          <Link href="/dashboard" style={{ textDecoration: 'none', background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#A0A0A0' }}>
-            🚦 Salón
-          </Link>
+    <AdminOperationShell>
+      <AdminWorkspace
+        eyebrow="Operación de cocina"
+        title="Ver pedidos"
+        description={`Comandas en tiempo real, prioridades y entrega para ${sucursal?.nombre || 'la sucursal actual'}.`}
+        actions={<AdminSegmented<Filtro> value={filtro} onChange={setFiltro} label="Filtrar pedidos" items={[{ value: 'activos', label: 'Activos', count: enCocina.length + listos.length }, { value: 'en_cocina', label: 'En cocina', count: enCocina.length }, { value: 'listo', label: 'Listos', count: listos.length }, { value: 'entregado', label: 'Entregados', count: entregados.length }]} />}
+      >
+        <AdminToast>{toast}</AdminToast>
+
+        <div className="messa-metrics">
+          <AdminMetric label="En preparación" value={`${enCocina.length}`} detail="Comandas activas" Icon={ChefHat} tone="gold" progress={Math.min(100, enCocina.length * 12)} />
+          <AdminMetric label="Listos para salir" value={`${listos.length}`} detail="Esperando despacho" Icon={CircleCheckBig} tone={listos.length ? 'green' : 'blue'} progress={Math.min(100, listos.length * 20)} />
+          <AdminMetric label="Con demora" value={`${urgentes.length}`} detail="Más de 20 minutos" Icon={AlertTriangle} tone={urgentes.length ? 'rose' : 'green'} progress={(urgentes.length / Math.max(enCocina.length, 1)) * 100} />
+          <AdminMetric label="Stock a revisar" value={`${criticos.length}`} detail="Insumos críticos" Icon={PackageCheck} tone={criticos.length ? 'amber' : 'green'} progress={(criticos.length / Math.max(insumos.length, 1)) * 100} />
         </div>
 
-        {criticos.length > 0 && (
-          <Link href="/encargos" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
-            <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: '#F59E0B', fontWeight: 600 }}>⚠️ {criticos.length} insumo{criticos.length > 1 ? 's' : ''} en nivel crítico — ver Encargos</span>
-              <span style={{ color: '#F59E0B' }}>›</span>
-            </div>
-          </Link>
-        )}
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', whiteSpace: 'nowrap' }}>
-          {([
-            { val: 'en_cocina', label: `🍳 En cocina (${counts.en_cocina})` },
-            { val: 'listo', label: `✅ Listos (${counts.listo})` },
-            { val: 'entregado', label: `🚀 Entregados (${counts.entregado})` },
-            { val: 'todos', label: '📋 Todos' },
-          ] as const).map(tab => (
-            <button key={tab.val} onClick={() => setFiltro(tab.val)} style={{
-              borderRadius: 100, padding: '6px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0,
-              background: filtro === tab.val ? 'rgba(212,175,55,0.15)' : '#1C1C1C',
-              color: filtro === tab.val ? '#D4AF37' : '#A0A0A0',
-              border: filtro === tab.val ? '1px solid rgba(212,175,55,0.4)' : '1px solid #2A2A2A',
-            }}>{tab.label}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Pedidos */}
-      <div style={{ padding: '12px 16px' }}>
-        {pedidosFiltrados.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#707070' }}>
-            <p style={{ fontSize: 40, margin: '0 0 12px' }}>{filtro === 'en_cocina' ? '🎉' : '🍳'}</p>
-            <p style={{ margin: 0, fontSize: 15 }}>
-              {filtro === 'en_cocina' ? '¡Todo al día! Sin pedidos pendientes.' : 'Sin pedidos en este estado'}
-            </p>
-          </div>
-        )}
-
-        {pedidosFiltrados.map(pedido => {
-          const urg = urgencia(pedido)
-          const expandido = pedidoExpandido === pedido.id
-          const mins = tiempoEnMinutos(pedido.created_at)
-
-          return (
-            <div key={pedido.id} style={{
-              background: '#141414', border: `1px solid ${urg.color}30`,
-              borderRadius: 16, marginBottom: 12, overflow: 'hidden',
-            }}>
-              {/* Header tarjeta */}
-              <div
-                onClick={() => setPedidoExpandido(expandido ? null : pedido.id)}
-                style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div style={{ background: `${urg.color}15`, border: `1px solid ${urg.color}30`, borderRadius: 12, padding: '8px 14px', textAlign: 'center' }}>
-                    <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: urg.color }}>M{pedido.mesa_numero}</p>
-                    <p style={{ margin: 0, fontSize: 9, color: urg.color }}>MESA</p>
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
-                      {pedido.items.length} ítem{pedido.items.length > 1 ? 's' : ''} · {formatPrecio(pedido.total)}
-                      {pedido.origen !== 'mesa' && <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(139,92,246,0.15)', color: '#8B5CF6', borderRadius: 100, padding: '2px 7px' }}>🛵 {pedido.origen}</span>}
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#707070' }}>
-                      Hace {mins} min · {urg.label}
-                    </p>
-                  </div>
+        <AdminPanel eyebrow="Flujo del servicio" title={filtro === 'activos' ? 'Pedidos activos' : filtro.replace('_', ' ')} detail="Abrí una comanda para ver ingredientes, notas y acciones.">
+          {filtrados.length ? <div className="messa-order-board">{filtrados.map(pedido => {
+            const minutos = tiempoEnMinutos(pedido.created_at)
+            const tone = pedido.estado === 'listo' ? 'green' : minutos >= 20 ? 'rose' : minutos >= 12 ? 'amber' : 'blue'
+            const tiempoObjetivo = Math.max(...pedido.items.map(item => item.plato.tiempo_preparacion_minutos || 15), 15)
+            return (
+              <button type="button" className={`messa-order-card messa-order-card--${tone}`} key={pedido.id} onClick={() => setSeleccionado(pedido)}>
+                <header><span><b>Mesa {pedido.mesa_numero}</b><small>{pedido.origen === 'mesa' ? 'Salón' : pedido.origen}</small></span><AdminStatus tone={tone}>{pedido.estado === 'en_cocina' ? `${minutos} min` : 'Listo'}</AdminStatus></header>
+                <div className="messa-order-card__media" aria-hidden="true">
+                  {pedido.items.slice(0, 3).map(item => <DishMedia key={item.id} plato={item.plato} />)}
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{
-                    background: pedido.estado === 'en_cocina' ? 'rgba(245,158,11,0.12)' : pedido.estado === 'entregado' ? 'rgba(34,197,94,0.12)' : 'rgba(59,130,246,0.12)',
-                    color: pedido.estado === 'en_cocina' ? '#F59E0B' : pedido.estado === 'entregado' ? '#22C55E' : '#3B82F6',
-                    borderRadius: 100, padding: '3px 8px', fontSize: 10, fontWeight: 500,
-                  }}>
-                    {pedido.estado === 'en_cocina' ? '🍳 Cocina' : pedido.estado === 'entregado' ? '✅ Entregado' : pedido.estado}
-                  </span>
-                  <span style={{ color: '#707070', fontSize: 18 }}>{expandido ? '▲' : '▼'}</span>
-                </div>
-              </div>
+                <div className="messa-order-card__items">{pedido.items.slice(0, 4).map(item => <span key={item.id}><strong>{item.cantidad}×</strong>{item.plato.nombre}</span>)}{pedido.items.length > 4 && <small>+{pedido.items.length - 4} ítems más</small>}</div>
+                <footer><span><Clock3 size={13} /> Objetivo {tiempoObjetivo} min</span><strong>{formatPrecio(pedido.total)}</strong></footer>
+              </button>
+            )
+          })}</div> : <AdminEmpty Icon={ChefHat} title="La cocina está al día" description="No hay pedidos para el filtro seleccionado." />}
+        </AdminPanel>
 
-              {/* Items */}
-              {expandido && (
-                <div style={{ padding: '0 16px 16px' }}>
-                  <div style={{ background: '#1C1C1C', borderRadius: 12, padding: 12, marginBottom: 12 }}>
-                    {pedido.items.map((item, idx) => (
-                      <div key={idx} style={{ padding: '8px 0', borderBottom: idx < pedido.items.length - 1 ? '1px solid #2A2A2A' : 'none' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <span style={{ fontSize: 15, fontWeight: 600 }}>{item.cantidad}× {item.plato.nombre}</span>
-                          <span style={{ fontSize: 13, color: '#707070' }}>{formatPrecio(item.precio_unitario * item.cantidad)}</span>
-                        </div>
-                        {item.ingredientes_removidos.length > 0 && (
-                          <p style={{ margin: 0, fontSize: 12, color: '#EF4444' }}>⚠️ Sin: {item.ingredientes_removidos.join(', ')}</p>
-                        )}
-                        {item.notas && (
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#F59E0B' }}>📝 {item.notas}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Acciones */}
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    {pedido.estado === 'en_cocina' && (
-                      <button
-                        onClick={() => handleMarcarListo(pedido.id)}
-                        className="btn-gold"
-                        style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', fontSize: 13, cursor: 'pointer' }}
-                      >
-                        ✅ Marcar como entregado
-                      </button>
-                    )}
-                    {pedido.estado === 'en_cocina' && (
-                      <button
-                        onClick={() => cancelarPedido(pedido.id)}
-                        style={{ padding: 12, borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}
-                      >
-                        ✕ Cancelar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+        <AdminSheet
+          open={Boolean(seleccionado)}
+          onClose={() => setSeleccionado(null)}
+          eyebrow={seleccionado ? `Mesa ${seleccionado.mesa_numero}` : ''}
+          title="Detalle de la comanda"
+          footer={seleccionado && (
+            <>
+              <AdminButton tone="danger" icon={X} onClick={() => cancelar(seleccionado)}>Cancelar</AdminButton>
+              {seleccionado.estado === 'en_cocina' && <AdminButton tone="primary" icon={Check} onClick={() => listo(seleccionado)}>Marcar listo</AdminButton>}
+              {seleccionado.estado === 'listo' && <AdminButton tone="primary" icon={Truck} onClick={() => entregar(seleccionado)}>Confirmar entrega</AdminButton>}
+            </>
+          )}
+        >
+          {seleccionado && <div className="messa-ticket">
+            <header><ReceiptText size={18} /><span><b>Pedido #{seleccionado.id.slice(-5).toUpperCase()}</b><small>{tiempoTranscurrido(seleccionado.created_at)} · {seleccionado.items.length} ítems</small></span></header>
+            <div>{seleccionado.items.map(item => {
+              const opciones = item.plato.modificadores.flatMap(modificador => modificador.opciones).filter(opcion => item.modificadores_elegidos.includes(opcion.id)).map(opcion => opcion.nombre)
+              const removidos = item.plato.ingredientes.filter(ingrediente => item.ingredientes_removidos.includes(ingrediente.id)).map(ingrediente => ingrediente.nombre)
+              return <article key={item.id}><DishMedia plato={item.plato} className="messa-ticket__dish-media" /><strong>{item.cantidad}</strong><span><b>{item.plato.nombre}</b>{opciones.length > 0 && <small>{opciones.join(' · ')}</small>}{removidos.length > 0 && <small>Sin: {removidos.join(', ')}</small>}{item.plato.notas_cocina && <small>{item.plato.notas_cocina}</small>}{item.notas && <em>{item.notas}</em>}</span><small>{item.plato.tiempo_preparacion_minutos || 15} min</small></article>
+            })}</div>
+            <footer><span>Total</span><strong>{formatPrecio(seleccionado.total)}</strong></footer>
+          </div>}
+        </AdminSheet>
+      </AdminWorkspace>
+    </AdminOperationShell>
   )
 }

@@ -1,4 +1,4 @@
-# MenuFlow — Sistema Premium de Gestión de Restaurante
+# MESSA — Sistema Premium de Gestión de Restaurante
 
 Creado por **Matías Colimodio** — matiascolimodio@gmail.com
 
@@ -7,7 +7,7 @@ Creado por **Matías Colimodio** — matiascolimodio@gmail.com
 ## 🚀 Correr localmente
 
 ```bash
-cd menuflow
+cd messa
 npm install
 cp .env.example .env        # completá al menos SESSION_SECRET y las 3 cuentas (ver abajo)
 npm run build

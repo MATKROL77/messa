@@ -2,7 +2,18 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import MessaWordmark from '@/components/messa-wordmark'
 import { useStore } from '@/lib/store'
+import type { RolUsuario } from '@/types'
+
+interface LoginResponse {
+  ok?: boolean
+  nombre?: string
+  email?: string
+  rol?: RolUsuario
+  error?: string
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,8 +34,8 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      const data = await res.json()
-      if (data.ok) {
+      const data = await res.json() as LoginResponse
+      if (data.ok && data.nombre && data.email && data.rol) {
         setSesionAdmin({ nombre: data.nombre, email: data.email, rol: data.rol })
         router.push('/admin')
       } else {
@@ -38,14 +49,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 24px' }}>
+    <div className="messa-login">
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
-        <p style={{ fontSize: 44, margin: '0 0 8px' }}>🍽️</p>
-        <h1 className="font-titulos" style={{ fontSize: 28, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.3px' }}>Menu<span style={{ color: 'var(--gold)' }}>Flow</span></h1>
+        <MessaWordmark className="messa-login__wordmark" />
         <p style={{ color: '#707070', fontSize: 13, margin: 0 }}>Panel de administración</p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ background: '#141414', border: '1px solid #2A2A2A', borderRadius: 20, padding: 24 }}>
+      <form onSubmit={handleSubmit} className="messa-login__card">
         <div style={{ marginBottom: 16 }}>
           <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Email</p>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@restaurante.com" required className="input-premium" autoComplete="username" />
@@ -54,19 +64,19 @@ export default function LoginPage() {
           <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Contraseña</p>
           <div style={{ position: 'relative' }}>
             <input type={mostrarPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required className="input-premium" style={{ paddingRight: 44 }} autoComplete="current-password" />
-            <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#707070', cursor: 'pointer' }}>{mostrarPassword ? '🙈' : '👁️'}</button>
+            <button type="button" aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setMostrarPassword(!mostrarPassword)} style={{ alignItems: 'center', display: 'flex', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#707070', cursor: 'pointer' }}>{mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
           </div>
         </div>
 
         {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, padding: '10px 12px', marginBottom: 16 }}><p style={{ margin: 0, fontSize: 12, color: '#EF4444' }}>{error}</p></div>}
 
-        <button type="submit" disabled={cargando} className="btn-gold" style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', fontSize: 15, cursor: 'pointer' }}>
+        <button type="submit" disabled={cargando} className="messa-login__submit">
           {cargando ? 'Verificando...' : 'Iniciar sesión'}
         </button>
 
         <div style={{ marginTop: 18, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: 12 }}>
-          <p style={{ margin: 0, fontSize: 11, color: '#707070', lineHeight: 1.7 }}>
-            🔐 El login se verifica en el servidor con bcrypt — las cuentas se configuran como variables de entorno (ver <code style={{ color: '#3B82F6' }}>.env.example</code>). Ya no hay contraseñas de demo en el código.
+          <p style={{ alignItems: 'flex-start', display: 'flex', gap: 7, margin: 0, fontSize: 11, color: '#707070', lineHeight: 1.7 }}>
+            <ShieldCheck size={16} style={{ flexShrink: 0, marginTop: 1 }} /> <span>El login se verifica en el servidor con bcrypt — las cuentas se configuran como variables de entorno (ver <code style={{ color: '#3B82F6' }}>.env.example</code>).</span>
           </p>
         </div>
 
@@ -75,7 +85,7 @@ export default function LoginPage() {
         </div>
       </form>
 
-      <Link href="/" style={{ textDecoration: 'none', textAlign: 'center', display: 'block', marginTop: 20, color: '#707070', fontSize: 13 }}>← Volver al inicio</Link>
+      <Link href="/" style={{ alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', textAlign: 'center', display: 'flex', marginTop: 20, color: '#707070', fontSize: 13 }}><ArrowLeft size={15} />Volver al inicio</Link>
     </div>
   )
 }

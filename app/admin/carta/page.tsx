@@ -1,305 +1,429 @@
 'use client'
-import { useState } from 'react'
-import Link from 'next/link'
+
+import { useMemo, useState } from 'react'
+import { ChefHat, Clock3, Eye, EyeOff, FolderCog, ImageIcon, Link2, ListChecks, Pencil, Plus, Search, Sparkles, Star, Trash2, UtensilsCrossed } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { Plato, Ingrediente, PaneraOpcion } from '@/types'
+import type { Ingrediente, Insumo, Modificador, Plato } from '@/types'
 import { formatPrecio, generarId } from '@/lib/utils'
-import PlatoImg from '@/components/PlatoImg'
+import DishMedia from '@/components/menu/DishMedia'
 import ImageUploader from '@/components/ImageUploader'
+import { AdminButton, AdminMetric, AdminPanel, AdminSegmented, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
 
 const EMPTY_PLATO: Omit<Plato, 'id' | 'rating' | 'total_reviews'> = {
-  nombre: '', descripcion: '', precio: 0, categoria_id: 'entradas',
-  ingredientes: [], insumos_requeridos: [], modificadores: [],
-  tags: [], imagen_url: '', disponible: true, destacado: false, orden: 0,
+  nombre: '',
+  descripcion: '',
+  precio: 0,
+  precio_pendiente: false,
+  categoria_id: 'entradas',
+  ingredientes: [],
+  insumos_requeridos: [],
+  modificadores: [],
+  tags: [],
+  imagen_url: '',
+  disponible: true,
+  destacado: false,
+  orden: 99,
+  tiempo_preparacion_minutos: 15,
 }
-
-const EMOJIS_CATEGORIA = ['🥗', '🍝', '🥩', '🐟', '🍮', '🍷', '🍕', '🍔', '🌮', '🍣', '🥘', '🧀', '🍰', '☕', '🍹']
 
 export default function CartaAdminPage() {
-  const { platos, actualizarPlato, agregarPlato, eliminarPlato, toggleDestacado, toggleDisponible, tagsDisponibles, agregarTagDisponible, categoriasDisponibles, agregarCategoria, eliminarCategoria, config, actualizarConfig } = useStore()
+  const {
+    platos,
+    actualizarPlato,
+    agregarPlato,
+    eliminarPlato,
+    toggleDestacado,
+    toggleDisponible,
+    categoriasDisponibles,
+    agregarCategoria,
+    eliminarCategoria,
+    insumos,
+    sucursalActualId,
+  } = useStore()
   const [busqueda, setBusqueda] = useState('')
-  const [categoriaFiltro, setCategoriaFiltro] = useState('todos')
+  const [categoria, setCategoria] = useState('todos')
   const [editando, setEditando] = useState<Plato | null>(null)
-  const [creando, setCreando] = useState(false)
-  const [formNuevo, setFormNuevo] = useState({ ...EMPTY_PLATO })
-  const [nuevaTag, setNuevaTag] = useState('')
-  const [nuevoIng, setNuevoIng] = useState('')
+  const [nuevo, setNuevo] = useState<Omit<Plato, 'id' | 'rating' | 'total_reviews'> | null>(null)
+  const [eliminando, setEliminando] = useState<Plato | null>(null)
+  const [categoriasAbiertas, setCategoriasAbiertas] = useState(false)
+  const [nuevaCategoria, setNuevaCategoria] = useState('')
   const [toast, setToast] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [mostrarCategorias, setMostrarCategorias] = useState(false)
-  const [mostrarPanera, setMostrarPanera] = useState(false)
-  const [nuevaCatNombre, setNuevaCatNombre] = useState('')
-  const [nuevaCatEmoji, setNuevaCatEmoji] = useState('🍽️')
-  const [paneraForm, setPaneraForm] = useState(config.panera)
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2600) }
+  const showToast = (mensaje: string) => {
+    setToast(mensaje)
+    window.setTimeout(() => setToast(''), 2400)
+  }
 
-  const platosFiltrados = platos.filter(p => {
-    if (categoriaFiltro !== 'todos' && p.categoria_id !== categoriaFiltro) return false
-    if (busqueda && !p.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
-    return true
-  })
+  const filtrados = useMemo(() => platos
+    .filter(plato => categoria === 'todos' || plato.categoria_id === categoria)
+    .filter(plato => `${plato.nombre} ${plato.descripcion}`.toLowerCase().includes(busqueda.toLowerCase()))
+    .sort((a, b) => a.orden - b.orden), [busqueda, categoria, platos])
 
-  const handleGuardar = () => {
-    if (!editando) return
-    if (!editando.nombre || editando.precio <= 0) { showToast('Completá nombre y precio'); return }
+  const pendientesPrecio = platos.filter(plato => plato.precio_pendiente || plato.precio <= 0).length
+  const activos = platos.filter(plato => plato.disponible).length
+
+  const guardarEdicion = () => {
+    if (!editando?.nombre.trim()) return showToast('El nombre es obligatorio')
+    if (editando.precio <= 0 && !editando.precio_pendiente) return showToast('Definí el precio o marcá precio pendiente')
     actualizarPlato(editando)
     setEditando(null)
-    showToast('Plato actualizado ✓')
+    showToast('Producto actualizado')
   }
 
-  const handleCrear = () => {
-    if (!formNuevo.nombre || formNuevo.precio <= 0) { showToast('Completá nombre y precio'); return }
-    agregarPlato(formNuevo)
-    setFormNuevo({ ...EMPTY_PLATO })
-    setCreando(false)
-    showToast('Plato creado ✓')
+  const crearProducto = () => {
+    if (!nuevo?.nombre.trim()) return showToast('El nombre es obligatorio')
+    if (nuevo.precio <= 0 && !nuevo.precio_pendiente) return showToast('Definí el precio o marcá precio pendiente')
+    agregarPlato(nuevo)
+    setNuevo(null)
+    showToast('Producto agregado a la carta')
   }
 
-  const handleEliminar = (id: string) => { eliminarPlato(id); setConfirmDelete(null); showToast('Plato eliminado') }
-
-  const handleAgregarCategoria = () => {
-    if (!nuevaCatNombre.trim()) { showToast('Ingresá un nombre'); return }
-    agregarCategoria(nuevaCatNombre, nuevaCatEmoji)
-    setNuevaCatNombre('')
-    showToast('Categoría creada ✓')
+  const confirmarEliminacion = () => {
+    if (!eliminando) return
+    eliminarPlato(eliminando.id)
+    setEliminando(null)
+    showToast('Producto retirado de la carta')
   }
-
-  const handleEliminarCategoria = (id: string) => {
-    const res = eliminarCategoria(id)
-    if (res.ok) showToast('Categoría eliminada')
-    else showToast(res.error || 'No se pudo eliminar')
-  }
-
-  const handleGuardarPanera = () => { actualizarConfig({ panera: paneraForm }); showToast('Configuración de bienvenida guardada ✓') }
-  const agregarOpcionPanera = () => setPaneraForm({ ...paneraForm, opciones: [...paneraForm.opciones, { id: generarId(), nombre: '', precio: 0 }] })
-  const actualizarOpcionPanera = (id: string, cambios: Partial<PaneraOpcion>) => setPaneraForm({ ...paneraForm, opciones: paneraForm.opciones.map(o => o.id === id ? { ...o, ...cambios } : o) })
-  const eliminarOpcionPanera = (id: string) => setPaneraForm({ ...paneraForm, opciones: paneraForm.opciones.filter(o => o.id !== id) })
-
-  const addTag = (form: any, setForm: any, tag: string) => { if (!tag.trim()) return; setForm({ ...form, tags: [...(form.tags || []), tag.trim()] }); setNuevaTag('') }
-  const removeTag = (form: any, setForm: any, tag: string) => setForm({ ...form, tags: form.tags.filter((t: string) => t !== tag) })
-  const addIng = (form: any, setForm: any, nombre: string) => { if (!nombre.trim()) return; const ing: Ingrediente = { id: generarId(), nombre: nombre.trim(), removible: true }; setForm({ ...form, ingredientes: [...(form.ingredientes || []), ing] }); setNuevoIng('') }
-  const removeIng = (form: any, setForm: any, id: string) => setForm({ ...form, ingredientes: form.ingredientes.filter((i: Ingrediente) => i.id !== id) })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 40 }}>
-      {toast && <div className="fade-in" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: '#1C1C1C', border: '1px solid #383838', borderRadius: 100, padding: '10px 20px', fontSize: 13, color: '#fff', zIndex: 9999, whiteSpace: 'nowrap' }}>{toast}</div>}
+    <AdminWorkspace
+      eyebrow="Carta editorial"
+      title="La carta"
+      description="Los 20 productos aprobados, sus assets transparentes y toda la información operativa viven en un único catálogo."
+      actions={(
+        <>
+          <AdminButton tone="neutral" icon={FolderCog} onClick={() => setCategoriasAbiertas(true)}>Categorías</AdminButton>
+          <AdminButton tone="primary" icon={Plus} onClick={() => setNuevo({ ...EMPTY_PLATO })}>Nuevo producto</AdminButton>
+        </>
+      )}
+    >
+      <AdminToast>{toast}</AdminToast>
 
-      <div style={{ background: 'var(--bg)', borderBottom: '1px solid #1C1C1C', padding: 16, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div>
-            <h1 className="font-titulos" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Gestión de Carta</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#707070' }}>{platos.length} platos · CMS</p>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setCreando(true); setEditando(null) }} className="btn-gold" style={{ padding: '8px 14px', borderRadius: 10, border: 'none', fontSize: 13, cursor: 'pointer' }}>+ Nuevo</button>
-            <Link href="/admin" style={{ textDecoration: 'none', background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#A0A0A0' }}>← Admin</Link>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          <button onClick={() => setMostrarCategorias(true)} style={{ flex: 1, padding: 9, borderRadius: 10, background: '#1C1C1C', border: '1px solid #2A2A2A', color: '#A0A0A0', fontSize: 12, cursor: 'pointer' }}>🗂️ Categorías</button>
-          <button onClick={() => { setPaneraForm(config.panera); setMostrarPanera(true) }} style={{ flex: 1, padding: 9, borderRadius: 10, background: '#1C1C1C', border: '1px solid #2A2A2A', color: '#A0A0A0', fontSize: 12, cursor: 'pointer' }}>🥖 Bienvenida</button>
-        </div>
-        <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar plato..." className="input-premium" style={{ marginBottom: 10 }} />
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', whiteSpace: 'nowrap' }}>
-          <CatBtn active={categoriaFiltro === 'todos'} onClick={() => setCategoriaFiltro('todos')} label="Todos" />
-          {categoriasDisponibles.map(c => <CatBtn key={c.id} active={categoriaFiltro === c.id} onClick={() => setCategoriaFiltro(c.id)} label={`${c.emoji} ${c.nombre}`} />)}
-        </div>
+      <div className="messa-metrics">
+        <AdminMetric label="Productos" value={`${platos.length}`} detail="Catálogo aprobado" Icon={UtensilsCrossed} tone="gold" progress={100} />
+        <AdminMetric label="Visibles" value={`${activos}`} detail={`${platos.length - activos} ocultos temporalmente`} Icon={Eye} tone="green" progress={(activos / Math.max(platos.length, 1)) * 100} />
+        <AdminMetric label="Categorías" value={`${categoriasDisponibles.length}`} detail="Navegación pública" Icon={FolderCog} tone="blue" progress={80} />
+        <AdminMetric label="Precio pendiente" value={`${pendientesPrecio}`} detail={pendientesPrecio ? 'Requiere definición' : 'Todo completo'} Icon={Sparkles} tone={pendientesPrecio ? 'amber' : 'green'} progress={100 - (pendientesPrecio / Math.max(platos.length, 1)) * 100} />
       </div>
 
-      <div style={{ padding: 16 }}>
-        {platosFiltrados.map(plato => (
-          <div key={plato.id} style={{ background: '#141414', border: '1px solid #2A2A2A', borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', gap: 12, padding: '12px 14px', alignItems: 'center' }}>
-              {plato.imagen_url && <div style={{ width: 56, height: 56, borderRadius: 10, overflow: 'hidden', flexShrink: 0, position: 'relative' }}><PlatoImg src={plato.imagen_url} alt={plato.nombre} /></div>}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plato.nombre}</p>
-                  {plato.destacado && <span style={{ fontSize: 10, background: 'rgba(212,175,55,0.15)', color: 'var(--gold)', borderRadius: 100, padding: '2px 6px', flexShrink: 0 }}>⭐</span>}
-                  {!plato.disponible && <span style={{ fontSize: 10, background: 'rgba(239,68,68,0.12)', color: '#EF4444', borderRadius: 100, padding: '2px 6px', flexShrink: 0 }}>Sin stock</span>}
-                </div>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--gold)', fontWeight: 600 }}>{formatPrecio(plato.precio)}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#707070' }}>{categoriasDisponibles.find(c => c.id === plato.categoria_id)?.nombre}</p>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => { setEditando({ ...plato }); setCreando(false) }} style={{ padding: '5px 10px', borderRadius: 8, background: '#2A2A2A', border: 'none', color: '#fff', fontSize: 11, cursor: 'pointer' }}>✏️ Editar</button>
-                <button onClick={() => toggleDestacado(plato.id)} style={{ padding: '5px 10px', borderRadius: 8, background: plato.destacado ? 'rgba(212,175,55,0.15)' : '#1C1C1C', border: plato.destacado ? '1px solid rgba(212,175,55,0.3)' : '1px solid #2A2A2A', color: plato.destacado ? 'var(--gold)' : '#707070', fontSize: 11, cursor: 'pointer' }}>⭐ Chef</button>
-                <button onClick={() => toggleDisponible(plato.id)} style={{ padding: '5px 10px', borderRadius: 8, background: plato.disponible ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: 'none', color: plato.disponible ? '#22C55E' : '#EF4444', fontSize: 11, cursor: 'pointer' }}>{plato.disponible ? '✅ Activo' : '❌ Oculto'}</button>
-                <button onClick={() => setConfirmDelete(plato.id)} style={{ padding: '5px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: 'none', color: '#EF4444', fontSize: 11, cursor: 'pointer' }}>🗑 Borrar</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal editar/crear plato */}
-      {(editando || creando) && (
-        <div className="overlay" onClick={e => { if (e.target === e.currentTarget) { setEditando(null); setCreando(false) } }} style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
-          <div className="slide-up" style={{ width: '100%', maxWidth: 480, margin: '0 auto', background: '#141414', borderRadius: '20px 20px 0 0', maxHeight: '92vh', overflowY: 'auto', padding: '20px 20px 40px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{creando ? 'Nuevo plato' : 'Editar plato'}</h2>
-              <button onClick={() => { setEditando(null); setCreando(false) }} style={{ background: '#2A2A2A', border: 'none', borderRadius: 10, padding: '8px 14px', color: '#fff', cursor: 'pointer' }}>✕</button>
-            </div>
-            <PlatoForm form={editando || formNuevo} setForm={editando ? setEditando : setFormNuevo} nuevaTag={nuevaTag} setNuevaTag={setNuevaTag} nuevoIng={nuevoIng} setNuevoIng={setNuevoIng} addTag={addTag} removeTag={removeTag} addIng={addIng} removeIng={removeIng} tagsDisponibles={tagsDisponibles} agregarTagDisponible={agregarTagDisponible} categoriasDisponibles={categoriasDisponibles} />
-            <button onClick={editando ? handleGuardar : handleCrear} className="btn-gold" style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', fontSize: 15, cursor: 'pointer', marginTop: 16 }}>{creando ? 'Crear plato' : 'Guardar cambios'}</button>
-          </div>
+      <AdminPanel className="messa-catalog-panel">
+        <div className="messa-catalog-toolbar">
+          <label className="messa-search">
+            <Search size={16} aria-hidden="true" />
+            <input value={busqueda} onChange={event => setBusqueda(event.target.value)} placeholder="Buscar producto o descripción" aria-label="Buscar en la carta" />
+          </label>
+          <AdminSegmented
+            value={categoria}
+            onChange={setCategoria}
+            label="Filtrar por categoría"
+            items={[
+              { value: 'todos', label: 'Todo', count: platos.length },
+              ...categoriasDisponibles.map(item => ({ value: item.id, label: item.nombre, count: platos.filter(plato => plato.categoria_id === item.id).length })),
+            ]}
+          />
         </div>
-      )}
 
-      {/* Modal categorías */}
-      {mostrarCategorias && (
-        <div className="overlay" onClick={e => { if (e.target === e.currentTarget) setMostrarCategorias(false) }} style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
-          <div className="slide-up" style={{ width: '100%', maxWidth: 480, margin: '0 auto', background: '#141414', borderRadius: '20px 20px 0 0', maxHeight: '85vh', overflowY: 'auto', padding: '20px 20px 40px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Categorías del menú</h2>
-              <button onClick={() => setMostrarCategorias(false)} style={{ background: '#2A2A2A', border: 'none', borderRadius: 10, padding: '8px 14px', color: '#fff', cursor: 'pointer' }}>✕</button>
-            </div>
-            {categoriasDisponibles.map(c => (
-              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#1C1C1C', borderRadius: 12, marginBottom: 8 }}>
-                <span style={{ fontSize: 14 }}>{c.emoji} {c.nombre}</span>
-                <button onClick={() => handleEliminarCategoria(c.id)} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 12 }}>🗑</button>
-              </div>
-            ))}
-            <p style={{ fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 10px' }}>Nueva categoría</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {EMOJIS_CATEGORIA.map(e => <button key={e} onClick={() => setNuevaCatEmoji(e)} style={{ width: 38, height: 38, borderRadius: 10, fontSize: 16, cursor: 'pointer', background: nuevaCatEmoji === e ? 'rgba(212,175,55,0.15)' : '#1C1C1C', border: nuevaCatEmoji === e ? '1px solid rgba(212,175,55,0.4)' : '1px solid #2A2A2A' }}>{e}</button>)}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input value={nuevaCatNombre} onChange={e => setNuevaCatNombre(e.target.value)} placeholder="Nombre (ej: Pizzas)" className="input-premium" style={{ flex: 1 }} />
-              <button onClick={handleAgregarCategoria} className="btn-gold" style={{ padding: '0 18px', borderRadius: 12, border: 'none', fontSize: 13, cursor: 'pointer' }}>+ Crear</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal panera / bienvenida */}
-      {mostrarPanera && (
-        <div className="overlay" onClick={e => { if (e.target === e.currentTarget) setMostrarPanera(false) }} style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
-          <div className="slide-up" style={{ width: '100%', maxWidth: 480, margin: '0 auto', background: '#141414', borderRadius: '20px 20px 0 0', maxHeight: '88vh', overflowY: 'auto', padding: '20px 20px 40px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>🥖 Bienvenida al sentarse</h2>
-              <button onClick={() => setMostrarPanera(false)} style={{ background: '#2A2A2A', border: 'none', borderRadius: 10, padding: '8px 14px', color: '#fff', cursor: 'pointer' }}>✕</button>
-            </div>
-            <p style={{ fontSize: 12, color: '#707070', margin: '0 0 16px', lineHeight: 1.6 }}>Se muestra una sola vez cuando el cliente se sienta por primera vez en una mesa. Podés ofrecer varias opciones (gratis o pagas) o desactivarlo.</p>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer' }}>
-              <input type="checkbox" checked={paneraForm.habilitada} onChange={e => setPaneraForm({ ...paneraForm, habilitada: e.target.checked })} style={{ width: 18, height: 18 }} />
-              <span style={{ fontSize: 14 }}>Habilitar popup de bienvenida</span>
-            </label>
-            {paneraForm.habilitada && (
-              <>
-                <div style={{ marginBottom: 16 }}>
-                  <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Título del popup</p>
-                  <input value={paneraForm.titulo} onChange={e => setPaneraForm({ ...paneraForm, titulo: e.target.value })} className="input-premium" />
-                </div>
-                <p style={{ fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>Opciones (dejá precio en 0 para gratis)</p>
-                {paneraForm.opciones.map(op => (
-                  <div key={op.id} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input value={op.nombre} onChange={e => actualizarOpcionPanera(op.id, { nombre: e.target.value })} placeholder="Nombre de la opción" className="input-premium" style={{ flex: 1 }} />
-                    <input type="number" value={op.precio} onChange={e => actualizarOpcionPanera(op.id, { precio: parseFloat(e.target.value) || 0 })} placeholder="$" className="input-premium" style={{ width: 90 }} />
-                    <button onClick={() => eliminarOpcionPanera(op.id)} style={{ background: 'rgba(239,68,68,0.1)', border: 'none', borderRadius: 10, color: '#EF4444', padding: '0 12px', cursor: 'pointer' }}>✕</button>
+        <div className="messa-admin-product-grid">
+          {filtrados.map(plato => {
+            const categoriaActual = categoriasDisponibles.find(item => item.id === plato.categoria_id)
+            return (
+              <AdminPanel className="messa-admin-product" key={plato.id}>
+                <div className="messa-admin-product__media"><DishMedia plato={plato} variant="card" /></div>
+                <div className="messa-admin-product__body">
+                  <div className="messa-admin-product__meta">
+                    <AdminStatus tone={plato.disponible ? 'green' : 'rose'}>{plato.disponible ? 'Visible' : 'Oculto'}</AdminStatus>
+                    <span className="messa-status messa-status--gold"><Star size={10} fill="currentColor" />{plato.rating || 'Nuevo'}</span>
                   </div>
-                ))}
-                <button onClick={agregarOpcionPanera} style={{ width: '100%', padding: 10, borderRadius: 10, background: '#1C1C1C', border: '1px dashed #2A2A2A', color: '#707070', fontSize: 13, cursor: 'pointer', marginBottom: 16 }}>+ Agregar opción</button>
-              </>
-            )}
-            <button onClick={handleGuardarPanera} className="btn-gold" style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', fontSize: 15, cursor: 'pointer' }}>Guardar configuración</button>
-          </div>
+                  <p className="messa-kicker">{categoriaActual?.nombre || 'Sin categoría'}</p>
+                  <h2>{plato.nombre}</h2>
+                  <p className="messa-admin-product__description">{plato.descripcion}</p>
+                  <div className="messa-admin-product__footer">
+                    <strong className="messa-admin-product__price">
+                      <small>{plato.tiempo_preparacion_minutos ? `${plato.tiempo_preparacion_minutos} min` : 'Tiempo sin definir'}</small>
+                      {plato.precio_pendiente || plato.precio <= 0 ? 'Precio pendiente' : formatPrecio(plato.precio)}
+                    </strong>
+                    <div className="messa-admin-product__actions">
+                      <button type="button" onClick={() => toggleDestacado(plato.id)} aria-label={plato.destacado ? `Quitar ${plato.nombre} de destacados` : `Destacar ${plato.nombre}`} title="Recomendación del chef"><Star size={15} fill={plato.destacado ? 'currentColor' : 'none'} /></button>
+                      <button type="button" onClick={() => toggleDisponible(plato.id)} aria-label={plato.disponible ? `Ocultar ${plato.nombre}` : `Mostrar ${plato.nombre}`} title={plato.disponible ? 'Ocultar' : 'Mostrar'}>{plato.disponible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
+                      <button type="button" onClick={() => setEditando({ ...plato })} aria-label={`Editar ${plato.nombre}`} title="Editar"><Pencil size={15} /></button>
+                      <button type="button" onClick={() => setEliminando(plato)} aria-label={`Eliminar ${plato.nombre}`} title="Eliminar"><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                </div>
+              </AdminPanel>
+            )
+          })}
         </div>
-      )}
+      </AdminPanel>
 
-      {confirmDelete && (
-        <div className="overlay" style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div className="fade-in" style={{ background: '#1C1C1C', border: '1px solid #383838', borderRadius: 20, padding: 28, width: '100%', maxWidth: 320, textAlign: 'center' }}>
-            <p style={{ fontSize: 32, margin: '0 0 12px' }}>🗑️</p>
-            <h3 style={{ margin: '0 0 8px' }}>¿Eliminar plato?</h3>
-            <p style={{ color: '#707070', fontSize: 14, margin: '0 0 24px' }}>Esta acción no se puede deshacer.</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: 12, borderRadius: 12, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={() => handleEliminar(confirmDelete)} style={{ flex: 1, padding: 12, borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Eliminar</button>
+      <ProductSheet
+        form={editando}
+        title={editando ? `Editar ${editando.nombre}` : ''}
+        categorias={categoriasDisponibles}
+        insumos={insumos.filter(item => item.sucursal_id === sucursalActualId)}
+        productos={platos}
+        onChange={form => setEditando(form as Plato | null)}
+        onClose={() => setEditando(null)}
+        onSave={guardarEdicion}
+      />
+      <ProductSheet
+        form={nuevo}
+        title="Nuevo producto"
+        categorias={categoriasDisponibles}
+        insumos={insumos.filter(item => item.sucursal_id === sucursalActualId)}
+        productos={platos}
+        onChange={form => setNuevo(form as Omit<Plato, 'id' | 'rating' | 'total_reviews'> | null)}
+        onClose={() => setNuevo(null)}
+        onSave={crearProducto}
+      />
+
+      <AdminSheet open={categoriasAbiertas} onClose={() => setCategoriasAbiertas(false)} eyebrow="Organización" title="Categorías de la carta">
+        <div className="messa-category-list">
+          {categoriasDisponibles.map(item => (
+            <div className="messa-category-row" key={item.id}>
+              <span><b>{item.nombre}</b><small>{platos.filter(plato => plato.categoria_id === item.id).length} productos</small></span>
+              <AdminButton tone="quiet" icon={Trash2} onClick={() => {
+                const resultado = eliminarCategoria(item.id)
+                showToast(resultado.ok ? 'Categoría eliminada' : resultado.error || 'No se pudo eliminar')
+              }}>Eliminar</AdminButton>
             </div>
+          ))}
+        </div>
+        <div className="messa-form-field">
+          <label htmlFor="nueva-categoria">Nueva categoría</label>
+          <div className="messa-inline-form">
+            <input id="nueva-categoria" className="input-premium" value={nuevaCategoria} onChange={event => setNuevaCategoria(event.target.value)} placeholder="Ej. Pizzas" />
+            <AdminButton tone="primary" icon={Plus} onClick={() => {
+              if (!nuevaCategoria.trim()) return
+              agregarCategoria(nuevaCategoria.trim(), '•')
+              setNuevaCategoria('')
+              showToast('Categoría creada')
+            }}>Agregar</AdminButton>
           </div>
         </div>
-      )}
-    </div>
+      </AdminSheet>
+
+      <AdminSheet
+        open={Boolean(eliminando)}
+        onClose={() => setEliminando(null)}
+        eyebrow="Confirmación"
+        title="Retirar producto"
+        footer={(
+          <>
+            <AdminButton tone="neutral" onClick={() => setEliminando(null)}>Cancelar</AdminButton>
+            <AdminButton tone="danger" icon={Trash2} onClick={confirmarEliminacion}>Eliminar</AdminButton>
+          </>
+        )}
+      >
+        <div className="messa-confirmation">
+          <span><Trash2 size={22} /></span>
+          <h3>¿Retirar {eliminando?.nombre}?</h3>
+          <p>Dejará de aparecer en la carta pública. Esta acción modifica el catálogo persistido.</p>
+        </div>
+      </AdminSheet>
+    </AdminWorkspace>
   )
 }
 
-function PlatoForm({ form, setForm, nuevaTag, setNuevaTag, nuevoIng, setNuevoIng, addTag, removeTag, addIng, removeIng, tagsDisponibles, agregarTagDisponible, categoriasDisponibles }: any) {
+function ProductSheet<T extends Plato | Omit<Plato, 'id' | 'rating' | 'total_reviews'>>({ form, title, categorias, insumos, productos, onChange, onClose, onSave }: {
+  form: T | null
+  title: string
+  categorias: { id: string; nombre: string }[]
+  insumos: Insumo[]
+  productos: Plato[]
+  onChange: (form: T | null) => void
+  onClose: () => void
+  onSave: () => void
+}) {
+  const [ingrediente, setIngrediente] = useState('')
+  const [maridajeId, setMaridajeId] = useState('')
+  if (!form) return null
+
+  const update = <K extends keyof T>(key: K, value: T[K]) => onChange({ ...form, [key]: value })
+  const addIngredient = () => {
+    if (!ingrediente.trim()) return
+    const item: Ingrediente = { id: generarId(), nombre: ingrediente.trim(), removible: true }
+    update('ingredientes', [...form.ingredientes, item] as T['ingredientes'])
+    setIngrediente('')
+  }
+  const updateModificadores = (modificadores: Modificador[]) => update('modificadores', modificadores as T['modificadores'])
+  const addModifier = (tipo: Modificador['tipo']) => {
+    const esCoccion = tipo === 'coccion'
+    updateModificadores([...form.modificadores, {
+      id: generarId(),
+      nombre: esCoccion ? 'Punto de cocción' : tipo === 'acompanamiento' ? 'Acompañamiento' : 'Opciones',
+      tipo,
+      obligatorio: esCoccion,
+      multiple: false,
+      opciones: esCoccion
+        ? [
+          { id: generarId(), nombre: 'Jugoso', precio_extra: 0 },
+          { id: generarId(), nombre: 'A punto', precio_extra: 0 },
+          { id: generarId(), nombre: 'Bien cocido', precio_extra: 0 },
+        ]
+        : [],
+    }])
+  }
+  const addPairing = () => {
+    const producto = productos.find(item => item.id === maridajeId)
+    if (!producto || producto.id === ('id' in form ? form.id : '')) return
+    const actuales = form.maridaje || []
+    if (actuales.some(item => item.plato_id === producto.id)) return
+    update('maridaje', [...actuales, { plato_id: producto.id, nombre: producto.nombre, precio: producto.precio, emoji: '✦', porcentaje_conversion: 0 }] as T['maridaje'])
+    setMaridajeId('')
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Field label="Nombre *" value={form.nombre} onChange={(v: string) => setForm({ ...form, nombre: v })} placeholder="Ej: Ojo de bife 400g" />
-      <Field label="Descripción" value={form.descripcion} onChange={(v: string) => setForm({ ...form, descripcion: v })} placeholder="Descripción del plato..." multiline />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div><p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Precio *</p><input type="number" value={form.precio || ''} onChange={e => setForm({ ...form, precio: parseFloat(e.target.value) || 0 })} placeholder="5800" className="input-premium" /></div>
-        <div>
-          <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Categoría</p>
-          <select value={form.categoria_id} onChange={e => setForm({ ...form, categoria_id: e.target.value })} className="input-premium" style={{ appearance: 'none' }}>
-            {categoriasDisponibles.map((c: any) => <option key={c.id} value={c.id}>{c.emoji} {c.nombre}</option>)}
+    <AdminSheet
+      open
+      onClose={onClose}
+      eyebrow="Editor de carta"
+      title={title}
+      wide
+      footer={(
+        <>
+          <AdminButton tone="neutral" onClick={onClose}>Cancelar</AdminButton>
+          <AdminButton tone="primary" onClick={onSave}>Guardar cambios</AdminButton>
+        </>
+      )}
+    >
+      <div className="messa-product-form">
+        <div className="messa-form-field messa-form-field--wide">
+          <label htmlFor="producto-nombre">Nombre</label>
+          <input id="producto-nombre" className="input-premium" value={form.nombre} onChange={event => update('nombre', event.target.value as T['nombre'])} />
+        </div>
+        <div className="messa-form-field messa-form-field--wide">
+          <label htmlFor="producto-descripcion">Descripción</label>
+          <textarea id="producto-descripcion" className="input-premium" rows={3} value={form.descripcion} onChange={event => update('descripcion', event.target.value as T['descripcion'])} />
+        </div>
+        <div className="messa-form-field">
+          <label htmlFor="producto-precio">Precio</label>
+          <input id="producto-precio" className="input-premium" type="number" min="0" value={form.precio} onChange={event => update('precio', Number(event.target.value) as T['precio'])} />
+        </div>
+        <div className="messa-form-field">
+          <label htmlFor="producto-categoria">Categoría</label>
+          <select id="producto-categoria" className="input-premium" value={form.categoria_id} onChange={event => update('categoria_id', event.target.value as T['categoria_id'])}>
+            {categorias.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
           </select>
         </div>
-      </div>
-
-      <ImageUploader value={form.imagen_url} onChange={(url: string) => setForm({ ...form, imagen_url: url })} />
-
-      <p style={{ fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Información nutricional</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {[['calorias', 'Calorías (kcal)'], ['proteinas', 'Proteínas (g)'], ['carbohidratos', 'Carbos (g)'], ['grasas', 'Grasas (g)']].map(([k, l]) => (
-          <div key={k}><p style={{ margin: '0 0 4px', fontSize: 11, color: '#707070' }}>{l}</p><input type="number" value={(form as any)[k] || ''} onChange={e => setForm({ ...form, [k]: parseFloat(e.target.value) || undefined })} placeholder="0" className="input-premium" /></div>
-        ))}
-      </div>
-
-      <div>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Etiquetas</p>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          {tagsDisponibles.map((tag: string) => (
-            <button key={tag} onClick={() => form.tags?.includes(tag) ? removeTag(form, setForm, tag) : addTag(form, setForm, tag)} style={{ padding: '5px 10px', borderRadius: 100, fontSize: 12, cursor: 'pointer', background: form.tags?.includes(tag) ? 'rgba(212,175,55,0.15)' : '#1C1C1C', color: form.tags?.includes(tag) ? 'var(--gold)' : '#707070', border: form.tags?.includes(tag) ? '1px solid rgba(212,175,55,0.4)' : '1px solid #2A2A2A' }}>{tag}</button>
-          ))}
+        <div className="messa-form-field">
+          <label htmlFor="producto-tiempo">Tiempo de preparación</label>
+          <div className="messa-field-with-icon"><Clock3 size={15} /><input id="producto-tiempo" className="input-premium" type="number" min="1" value={form.tiempo_preparacion_minutos || ''} onChange={event => update('tiempo_preparacion_minutos', Number(event.target.value) as T['tiempo_preparacion_minutos'])} /><span>min</span></div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input value={nuevaTag} onChange={e => setNuevaTag(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && nuevaTag.trim()) { agregarTagDisponible(nuevaTag.trim()); addTag(form, setForm, nuevaTag.trim()) } }} placeholder="Crear etiqueta nueva (ej: Sin Lactosa)..." className="input-premium" style={{ flex: 1 }} />
-          <button onClick={() => { if (nuevaTag.trim()) { agregarTagDisponible(nuevaTag.trim()); addTag(form, setForm, nuevaTag.trim()); setNuevaTag('') } }} style={{ padding: '8px 14px', borderRadius: 10, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>+ Crear</button>
+        <div className="messa-form-field messa-form-field--checks">
+          <label><input type="checkbox" checked={Boolean(form.disponible)} onChange={event => update('disponible', event.target.checked as T['disponible'])} />Visible en la carta</label>
+          <label><input type="checkbox" checked={Boolean(form.destacado)} onChange={event => update('destacado', event.target.checked as T['destacado'])} />Recomendación del chef</label>
+          <label><input type="checkbox" checked={Boolean(form.precio_pendiente)} onChange={event => update('precio_pendiente', event.target.checked as T['precio_pendiente'])} />Precio pendiente</label>
         </div>
-        <p style={{ margin: '6px 0 0', fontSize: 11, color: '#484848' }}>Las etiquetas nuevas quedan disponibles para todos los futuros platos.</p>
-      </div>
+        <div className="messa-form-field messa-form-field--wide">
+          <label><ImageIcon size={14} /> Asset del producto</label>
+          <ImageUploader value={form.imagen_url} onChange={url => update('imagen_url', url as T['imagen_url'])} />
+        </div>
+        <div className="messa-form-field messa-form-field--wide">
+          <label>Ingredientes interactivos</label>
+          <div className="messa-ingredient-list">
+            {form.ingredientes.map(item => (
+              <button type="button" key={item.id} onClick={() => update('ingredientes', form.ingredientes.map(ingredienteActual => ingredienteActual.id === item.id ? { ...ingredienteActual, removible: !ingredienteActual.removible } : ingredienteActual) as T['ingredientes'])}>
+                {item.nombre}<small>{item.removible ? 'removible' : 'fijo'}</small>
+              </button>
+            ))}
+          </div>
+          <div className="messa-inline-form">
+            <input className="input-premium" value={ingrediente} onChange={event => setIngrediente(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addIngredient() } }} placeholder="Agregar ingrediente" />
+            <AdminButton tone="neutral" icon={Plus} onClick={addIngredient}>Agregar</AdminButton>
+          </div>
+        </div>
 
-      <div>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ingredientes</p>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input value={nuevoIng} onChange={e => setNuevoIng(e.target.value)} onKeyDown={e => e.key === 'Enter' && addIng(form, setForm, nuevoIng)} placeholder="Ej: Trufa negra" className="input-premium" style={{ flex: 1 }} />
-          <button onClick={() => addIng(form, setForm, nuevoIng)} style={{ padding: '8px 14px', borderRadius: 10, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>+</button>
+        <div className="messa-form-field messa-form-field--wide messa-form-section">
+          <div className="messa-form-section__heading">
+            <span><Link2 size={15} /><b>Receta vinculada al inventario</b><small>El consumo se descuenta al confirmar cada pedido.</small></span>
+            <AdminButton tone="neutral" icon={Plus} onClick={() => update('insumos_requeridos', [...form.insumos_requeridos, { insumo_id: insumos[0]?.id || '', cantidad_por_porcion: 0 }] as T['insumos_requeridos'])}>Vincular insumo</AdminButton>
+          </div>
+          <div className="messa-recipe-editor">
+            {form.insumos_requeridos.map((requerido, index) => {
+              const insumo = insumos.find(item => item.id === requerido.insumo_id)
+              return (
+                <div className="messa-recipe-row" key={`${requerido.insumo_id}-${index}`}>
+                  <select className="input-premium" value={requerido.insumo_id} onChange={event => update('insumos_requeridos', form.insumos_requeridos.map((item, itemIndex) => itemIndex === index ? { ...item, insumo_id: event.target.value } : item) as T['insumos_requeridos'])}>
+                    <option value="">Elegir insumo</option>
+                    {insumos.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+                  </select>
+                  <label><input className="input-premium" type="number" min="0" step="0.01" value={requerido.cantidad_por_porcion} onChange={event => update('insumos_requeridos', form.insumos_requeridos.map((item, itemIndex) => itemIndex === index ? { ...item, cantidad_por_porcion: Number(event.target.value) } : item) as T['insumos_requeridos'])} /><span>{insumo?.unidad || 'unidad'} / porción</span></label>
+                  <button type="button" onClick={() => update('insumos_requeridos', form.insumos_requeridos.filter((_, itemIndex) => itemIndex !== index) as T['insumos_requeridos'])} aria-label="Quitar insumo"><Trash2 size={15} /></button>
+                </div>
+              )
+            })}
+            {!form.insumos_requeridos.length && <p className="messa-form-hint">Sin receta vinculada. El producto no modificará stock hasta que agregues un insumo.</p>}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {form.ingredientes?.map((ing: any) => (
-            <div key={ing.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 100, padding: '4px 10px' }}>
-              <span style={{ fontSize: 12, color: '#A0A0A0' }}>{ing.nombre}</span>
-              <button onClick={() => setForm({ ...form, ingredientes: form.ingredientes.map((i: any) => i.id === ing.id ? { ...i, removible: !i.removible } : i) })} style={{ fontSize: 9, background: ing.removible ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.12)', color: ing.removible ? '#22C55E' : '#EF4444', border: 'none', borderRadius: 100, padding: '2px 5px', cursor: 'pointer' }}>{ing.removible ? 'removible' : 'fijo'}</button>
-              <button onClick={() => removeIng(form, setForm, ing.id)} style={{ background: 'transparent', border: 'none', color: '#707070', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+
+        <div className="messa-form-field messa-form-field--wide messa-form-section">
+          <div className="messa-form-section__heading">
+            <span><ListChecks size={15} /><b>Personalización y cocina</b><small>Punto de cocción, acompañamientos y extras con precio o consumo propio.</small></span>
+            <div className="messa-form-section__actions">
+              <AdminButton tone="neutral" icon={ChefHat} onClick={() => addModifier('coccion')}>Cocción</AdminButton>
+              <AdminButton tone="neutral" icon={Plus} onClick={() => addModifier('acompanamiento')}>Acompañamiento</AdminButton>
             </div>
-          ))}
+          </div>
+          <div className="messa-modifier-editor">
+            {form.modificadores.map((modificador, modifierIndex) => (
+              <section className="messa-modifier-group" key={modificador.id}>
+                <header>
+                  <input className="input-premium" value={modificador.nombre} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, nombre: event.target.value } : item))} aria-label="Nombre del grupo" />
+                  <select className="input-premium" value={modificador.tipo || 'otro'} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, tipo: event.target.value as Modificador['tipo'] } : item))}>
+                    <option value="coccion">Cocción</option><option value="acompanamiento">Acompañamiento</option><option value="extra">Extra</option><option value="otro">Otro</option>
+                  </select>
+                  <label><input type="checkbox" checked={modificador.obligatorio} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, obligatorio: event.target.checked } : item))} />Obligatorio</label>
+                  <label><input type="checkbox" checked={modificador.multiple} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, multiple: event.target.checked } : item))} />Múltiple</label>
+                  <button type="button" onClick={() => updateModificadores(form.modificadores.filter((_, index) => index !== modifierIndex))} aria-label={`Eliminar ${modificador.nombre}`}><Trash2 size={15} /></button>
+                </header>
+                <div className="messa-modifier-options">
+                  {modificador.opciones.map((opcion, optionIndex) => {
+                    const consumo = opcion.insumos_requeridos?.[0]
+                    return (
+                      <div className="messa-modifier-option" key={opcion.id}>
+                        <input className="input-premium" value={opcion.nombre} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, opciones: item.opciones.map((opcionActual, actualIndex) => actualIndex === optionIndex ? { ...opcionActual, nombre: event.target.value } : opcionActual) } : item))} placeholder="Nombre de la opción" />
+                        <label><input className="input-premium" type="number" min="0" value={opcion.precio_extra} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, opciones: item.opciones.map((opcionActual, actualIndex) => actualIndex === optionIndex ? { ...opcionActual, precio_extra: Number(event.target.value) } : opcionActual) } : item))} /><span>$ extra</span></label>
+                        <select className="input-premium" value={consumo?.insumo_id || ''} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, opciones: item.opciones.map((opcionActual, actualIndex) => actualIndex === optionIndex ? { ...opcionActual, insumos_requeridos: event.target.value ? [{ insumo_id: event.target.value, cantidad_por_porcion: consumo?.cantidad_por_porcion || 0 }] : [] } : opcionActual) } : item))}>
+                          <option value="">Sin consumo extra</option>{insumos.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+                        </select>
+                        <input className="input-premium" aria-label="Cantidad extra por porción" type="number" min="0" step="0.01" disabled={!consumo?.insumo_id} value={consumo?.cantidad_por_porcion || 0} onChange={event => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, opciones: item.opciones.map((opcionActual, actualIndex) => actualIndex === optionIndex ? { ...opcionActual, insumos_requeridos: consumo ? [{ ...consumo, cantidad_por_porcion: Number(event.target.value) }] : [] } : opcionActual) } : item))} />
+                        <button type="button" onClick={() => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, opciones: item.opciones.filter((_, actualIndex) => actualIndex !== optionIndex) } : item))} aria-label={`Eliminar ${opcion.nombre}`}><Trash2 size={14} /></button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <AdminButton tone="quiet" icon={Plus} onClick={() => updateModificadores(form.modificadores.map((item, index) => index === modifierIndex ? { ...item, opciones: [...item.opciones, { id: generarId(), nombre: 'Nueva opción', precio_extra: 0 }] } : item))}>Agregar opción</AdminButton>
+              </section>
+            ))}
+          </div>
+        </div>
+
+        <div className="messa-form-field messa-form-field--wide">
+          <label htmlFor="producto-nota-cocina">Nota fija para cocina</label>
+          <textarea id="producto-nota-cocina" className="input-premium" rows={2} value={form.notas_cocina || ''} onChange={event => update('notas_cocina', event.target.value as T['notas_cocina'])} placeholder="Ej. Emplatar salsa aparte y confirmar alergias." />
+        </div>
+        <div className="messa-form-field messa-form-field--wide">
+          <label htmlFor="producto-tags">Etiquetas dietarias</label>
+          <input id="producto-tags" className="input-premium" value={form.tags.join(', ')} onChange={event => update('tags', event.target.value.split(',').map(item => item.trim()).filter(Boolean) as T['tags'])} placeholder="Sin TACC, Vegetariano" />
+        </div>
+
+        <div className="messa-form-field messa-form-field--wide messa-form-section">
+          <div className="messa-form-section__heading">
+            <span><Sparkles size={15} /><b>Maridajes y recomendaciones</b><small>Se muestran al costado del detalle del producto.</small></span>
+          </div>
+          <div className="messa-pairing-list">
+            {(form.maridaje || []).map(item => <span key={item.plato_id}><b>{item.nombre}</b><small>{formatPrecio(item.precio)}</small><button type="button" onClick={() => update('maridaje', (form.maridaje || []).filter(actual => actual.plato_id !== item.plato_id) as T['maridaje'])} aria-label={`Quitar ${item.nombre}`}><Trash2 size={13} /></button></span>)}
+          </div>
+          <div className="messa-inline-form">
+            <select className="input-premium" value={maridajeId} onChange={event => setMaridajeId(event.target.value)}>
+              <option value="">Elegir producto recomendado</option>
+              {productos.filter(item => item.id !== ('id' in form ? form.id : '')).map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </select>
+            <AdminButton tone="neutral" icon={Plus} onClick={addPairing}>Agregar</AdminButton>
+          </div>
         </div>
       </div>
-
-      <div style={{ display: 'flex', gap: 12 }}>
-        {[['disponible', '✅ Disponible en carta'], ['destacado', '⭐ Recomendación del Chef']].map(([k, l]) => (
-          <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1 }}>
-            <input type="checkbox" checked={!!(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.checked })} style={{ width: 16, height: 16 }} />
-            <span style={{ fontSize: 13, color: '#A0A0A0' }}>{l}</span>
-          </label>
-        ))}
-      </div>
-    </div>
+    </AdminSheet>
   )
-}
-
-function Field({ label, value, onChange, placeholder, multiline }: any) {
-  return (
-    <div>
-      <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>{label}</p>
-      {multiline ? <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3} className="input-premium" style={{ resize: 'none' }} /> : <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="input-premium" />}
-    </div>
-  )
-}
-
-function CatBtn({ active, onClick, label }: any) {
-  return <button onClick={onClick} style={{ borderRadius: 100, padding: '5px 12px', fontSize: 12, cursor: 'pointer', flexShrink: 0, background: active ? 'rgba(212,175,55,0.15)' : '#1C1C1C', color: active ? 'var(--gold)' : '#A0A0A0', border: active ? '1px solid rgba(212,175,55,0.4)' : '1px solid #2A2A2A', fontWeight: active ? 600 : 400 }}>{label}</button>
 }

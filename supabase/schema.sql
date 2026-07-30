@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════
--- MenuFlow — Schema de base de datos para Supabase
+-- MESSA — Schema de base de datos para Supabase
 -- Correr esto en: Supabase Dashboard → SQL Editor → New query → Run
 -- Esto es el paso que falta para que el celular y la PC vean los mismos
 -- datos en tiempo real (ver LEEME.md → "Por qué el celular y la PC no
@@ -49,6 +49,16 @@ create table if not exists platos (
   tags text[] default '{}',
   calorias int, proteinas int, carbohidratos int, grasas int,
   imagen_url text,
+  tiempo_preparacion_minutos int,
+  imagen_card_url text,
+  imagen_hero_url text,
+  imagen_recorte_url text,
+  video_url text,
+  poster_video_url text,
+  focal_x numeric,
+  focal_y numeric,
+  color_fondo_media text,
+  animacion_media text default 'none',
   disponible boolean default true,
   destacado boolean default false,
   orden int default 0,

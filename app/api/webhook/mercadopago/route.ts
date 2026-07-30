@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 
+interface MercadoPagoWebhookBody {
+  type?: string
+  data?: { id?: string | number }
+}
+
+interface MercadoPagoPayment {
+  status?: string
+  external_reference?: string
+  transaction_amount?: number
+}
+
 // Webhook oficial de Mercado Pago (IPN / webhooks v2). Registrar esta URL en
 // https://www.mercadopago.com.ar/developers/panel/webhooks:
 //   https://tu-dominio.com/api/webhook/mercadopago
@@ -50,7 +61,7 @@ function validarFirma(req: NextRequest, dataId: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as any;
+    const body = await req.json() as MercadoPagoWebhookBody
     if (body.type !== 'payment') return NextResponse.json({ ok: true })
 
     const paymentId = body.data?.id
@@ -69,11 +80,11 @@ export async function POST(req: NextRequest) {
     })
     if (!res.ok) return NextResponse.json({ ok: false, error: 'No se pudo confirmar el pago con MP' }, { status: 502 })
 
-    const pago = await res.json() as any;
+    const pago = await res.json() as MercadoPagoPayment
     if (pago.status === 'approved') {
       // TODO (cuando haya base de datos): marcar como pagado el pedido
       // asociado a pago.external_reference (mesa_id) de forma persistente,
-      // y notificar por WebSocket/Realtime al dashboard y al KDS.
+      // y notificar por WebSocket/Realtime al dashboard y a Ver pedidos.
       console.log('Pago aprobado y verificado:', { paymentId, mesa_id: pago.external_reference, monto: pago.transaction_amount })
     }
 

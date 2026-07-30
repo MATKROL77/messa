@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
+  allowedDevOrigins: ['192.168.0.42'],
+  turbopack: {
+    root: process.cwd(),
   },
   experimental: {
     serverActions: {

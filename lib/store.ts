@@ -5,6 +5,87 @@ import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRest
 import { getMesasMock, insumosIniciales, platosIniciales, configInicial, tagsIniciales, propinaConfigInicial, temaInicial, sucursalesIniciales, categoriasIniciales, deliveryIntegracionesIniciales, fidelidadConfigInicial, recompensasFidelidadIniciales } from '@/lib/data'
 import { generarId, obtenerDispositivoId } from '@/lib/utils'
 
+const MESSA_STORAGE_KEY = 'messa-store-v8'
+const LEGACY_STORAGE_KEY = 'menuflow-store-v7'
+
+// Conserva el estado operativo de instalaciones locales creadas antes del
+// cambio de identidad. La clave anterior se usa únicamente como migración.
+if (typeof window !== 'undefined') {
+  try {
+    if (!window.localStorage.getItem(MESSA_STORAGE_KEY)) {
+      const legacyState = window.localStorage.getItem(LEGACY_STORAGE_KEY)
+      if (legacyState) window.localStorage.setItem(MESSA_STORAGE_KEY, legacyState)
+    }
+  } catch {
+    // El almacenamiento puede estar bloqueado por el navegador; Zustand
+    // continuará con el estado inicial sin impedir que la aplicación cargue.
+  }
+}
+
+export type PermisoAdmin = 'resumen' | 'carta' | 'salon' | 'pedidos' | 'inventario' | 'reservas' | 'finanzas' | 'cobros' | 'caja' | 'delivery' | 'fidelidad' | 'sucursales' | 'usuarios' | 'identidad'
+
+const PERMISOS_ADMIN_DEFAULT: Record<RolUsuario, PermisoAdmin[]> = {
+  creator: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad'],
+  admin: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad'],
+  editor: ['resumen', 'carta', 'inventario'],
+  staff: ['resumen', 'salon', 'pedidos', 'reservas'],
+}
+
+const CATEGORIAS_MESSA_NUEVAS = new Set(['sushi', 'cafes'])
+
+/**
+ * Mantiene únicamente el catálogo editorial aprobado de MESSA. Conserva los
+ * datos operativos editables de cada producto conocido, pero fuerza sus assets
+ * y su identidad desde la fuente versionada para que una persistencia antigua
+ * no pueda volver a introducir fotos rectangulares o productos retirados.
+ */
+const sincronizarPlatosMessa = (platos: Plato[]) => {
+  const persistidos = new Map(platos.map(plato => [plato.id, plato]))
+
+  return platosIniciales.map(aprobado => {
+    const persistido = persistidos.get(aprobado.id)
+    if (!persistido) return aprobado
+
+    const modificadores = aprobado.modificadores.map(modificadorAprobado => {
+      const modificadorPersistido = persistido.modificadores.find(modificador => modificador.id === modificadorAprobado.id)
+      if (!modificadorPersistido) return modificadorAprobado
+      return {
+        ...modificadorAprobado,
+        ...modificadorPersistido,
+        opciones: modificadorPersistido.opciones.map(opcionPersistida => ({
+          ...modificadorAprobado.opciones.find(opcion => opcion.id === opcionPersistida.id),
+          ...opcionPersistida,
+        })),
+      }
+    })
+
+    return {
+      ...aprobado,
+      precio: persistido.precio,
+      precio_pendiente: persistido.precio_pendiente,
+      disponible: persistido.disponible,
+      destacado: persistido.destacado,
+      tiempo_preparacion_minutos: persistido.tiempo_preparacion_minutos,
+      ingredientes: persistido.ingredientes,
+      insumos_requeridos: persistido.insumos_requeridos,
+      modificadores,
+      tags: persistido.tags,
+      notas_cocina: persistido.notas_cocina,
+      rating: persistido.rating,
+      total_reviews: persistido.total_reviews,
+      reviews_muestra: persistido.reviews_muestra,
+    }
+  })
+}
+const sincronizarInsumosMessa = (insumos: Insumo[]) => [
+  ...insumos,
+  ...insumosIniciales.filter(inicial => !insumos.some(actual => actual.id === inicial.id)),
+]
+const sincronizarCategoriasMessa = (categorias: Categoria[]) => [
+  ...categorias,
+  ...categoriasIniciales.filter(categoria => CATEGORIAS_MESSA_NUEVAS.has(categoria.id) && !categorias.some(actual => actual.id === categoria.id)),
+]
+
 export interface Reserva {
   id: string; nombre: string; telefono: string; email: string; fecha: string
   hora: string; personas: number; estado: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
@@ -50,6 +131,10 @@ interface AppStore {
   fidelidadConfig: FidelidadConfig
   recompensasFidelidad: RecompensaFidelidad[]
   puntosClientes: Record<string, number>
+  resenasEnviadas: Record<string, boolean>
+  ultimaCuentaPagada: Record<string, string[]>
+  permisosAdmin: Record<RolUsuario, PermisoAdmin[]>
+  permisosVersion: number
 
   initStore: () => void
   iniciarSesionMesa: (mesaId: string, mesaNumero: number) => void
@@ -66,11 +151,13 @@ interface AppStore {
 
   confirmarPedido: (panera?: string | null) => Pedido | null
   marcarComoPagado: (mesaId: string, metodoPago: MetodoPago, propina: number, clienteEmail: string) => void
+  prepararPagoManual: (mesaId: string, propina: number, clienteEmail: string) => void
   marcarPagoManualStaff: (mesaId: string, metodoPago: MetodoPago) => void
   confirmarTransferenciaStaff: (pedidoId: string) => void
   actualizarMesa: (mesaId: string, estado: MesaEstado) => void
   ocuparMesaManual: (mesaId: string) => void
   liberarMesa: (mesaId: string) => void
+  marcarPedidoListo: (pedidoId: string) => void
   marcarPedidoEntregado: (pedidoId: string) => void
   cancelarPedido: (pedidoId: string) => void
   transferirMesa: (origenId: string, destinoId: string) => { ok: boolean; error?: string }
@@ -117,6 +204,7 @@ interface AppStore {
   // solo evita repetir el fetch en cada componente.
   setSesionAdmin: (s: { nombre: string; email: string; rol: RolUsuario } | null) => void
   logoutAdmin: () => Promise<void>
+  actualizarPermisoRol: (rol: RolUsuario, permiso: PermisoAdmin, habilitado: boolean) => void
 
   llamarMozo: (mesaId: string, mesaNumero: number, motivo: string) => void
   atenderLlamado: (llamadoId: string) => void
@@ -141,7 +229,7 @@ interface AppStore {
   otorgarPuntos: (email: string, puntos: number) => void
 
   // Reseñas
-  enviarResena: (platoId: string, rating: number, comentario: string, autorEmail?: string) => void
+  enviarResena: (pedidoId: string, platoId: string, rating: number, comentario: string, autorEmail?: string) => { ok: boolean; error?: string }
 }
 
 export const useStore = create<AppStore>()(
@@ -179,8 +267,24 @@ export const useStore = create<AppStore>()(
       fidelidadConfig: fidelidadConfigInicial,
       recompensasFidelidad: recompensasFidelidadIniciales,
       puntosClientes: {},
+      resenasEnviadas: {},
+      ultimaCuentaPagada: {},
+      permisosAdmin: PERMISOS_ADMIN_DEFAULT,
+      permisosVersion: 1,
 
-      initStore: () => { set({ dispositivoId: obtenerDispositivoId() }) },
+        initStore: () => {
+          set(state => ({
+            dispositivoId: obtenerDispositivoId(),
+            tema: state.tema.nombre_marca === 'MenuFlow' ? { ...state.tema, nombre_marca: 'MESSA' } : state.tema,
+            platos: sincronizarPlatosMessa(state.platos),
+            insumos: sincronizarInsumosMessa(state.insumos),
+            categoriasDisponibles: sincronizarCategoriasMessa(state.categoriasDisponibles),
+            permisosAdmin: state.permisosVersion < 2
+              ? { ...state.permisosAdmin, admin: PERMISOS_ADMIN_DEFAULT.admin }
+              : state.permisosAdmin,
+            permisosVersion: 2,
+          }))
+        },
 
       iniciarSesionMesa: (mesaId, mesaNumero) => {
         const devId = get().dispositivoId || obtenerDispositivoId()
@@ -194,10 +298,17 @@ export const useStore = create<AppStore>()(
         set({ esStaff: true, sesion: { mesa_id: mesaId, mesa_numero: mesaNumero, dispositivo_id: 'staff-' + mesaId, modo: 'comensal' } })
       },
 
-      iniciarModoVista: () => {
-        const devId = obtenerDispositivoId()
-        set({ dispositivoId: devId, esStaff: false, sesion: { mesa_id: 'vista', mesa_numero: 0, dispositivo_id: devId, modo: 'curioso' } })
-      },
+        iniciarModoVista: () => {
+          const devId = obtenerDispositivoId()
+          set(state => ({
+            dispositivoId: devId,
+            esStaff: false,
+            sesion: { mesa_id: 'vista', mesa_numero: 0, dispositivo_id: devId, modo: 'curioso' },
+            tema: state.tema.nombre_marca === 'MenuFlow' ? { ...state.tema, nombre_marca: 'MESSA' } : state.tema,
+            platos: sincronizarPlatosMessa(state.platos),
+            categoriasDisponibles: sincronizarCategoriasMessa(state.categoriasDisponibles),
+          }))
+        },
 
       abandonarMesa: () => {
         const { sesion, mesas, dispositivoId, esStaff } = get()
@@ -216,7 +327,20 @@ export const useStore = create<AppStore>()(
       agregarAlCarrito: (plato, ingRemovidos, notas, cantidad = 1, modsElegidos = []) => {
         const { dispositivoId, esStaff, sesion } = get()
         const devId = esStaff ? (sesion?.dispositivo_id || 'staff') : dispositivoId
-        const item: ItemPedido = { id: generarId(), plato, cantidad, ingredientes_removidos: ingRemovidos, modificadores_elegidos: modsElegidos, notas, precio_unitario: plato.precio, dispositivo_id: devId }
+        const extra = plato.modificadores
+          .flatMap(modificador => modificador.opciones)
+          .filter(opcion => modsElegidos.includes(opcion.id))
+          .reduce((total, opcion) => total + opcion.precio_extra, 0)
+        const item: ItemPedido = {
+          id: generarId(),
+          plato,
+          cantidad,
+          ingredientes_removidos: ingRemovidos,
+          modificadores_elegidos: modsElegidos,
+          notas,
+          precio_unitario: plato.precio + extra,
+          dispositivo_id: devId,
+        }
         set(s => ({ carrito: [...s.carrito, item] }))
       },
 
@@ -249,36 +373,74 @@ export const useStore = create<AppStore>()(
       marcarComoPagado: (mesaId, metodoPago, propina, clienteEmail) => {
         let primerPedido = true
         let totalCobrado = 0
+        const pedidosCobrados: string[] = []
         const updatedPedidos = get().pedidos.map(p => {
           if (p.mesa_id === mesaId && p.estado !== 'cancelado' && p.estado !== 'pagado') {
             const esPrimero = primerPedido; primerPedido = false
             totalCobrado += p.total + (esPrimero ? propina : 0)
+            pedidosCobrados.push(p.id)
             return { ...p, estado: 'pagado' as const, metodo_pago: metodoPago, propina: esPrimero ? propina : 0, cliente_email: clienteEmail, confirmado_staff: metodoPago !== 'transferencia', updated_at: new Date().toISOString() }
           }
           return p
         })
         const updatedMesas = get().mesas.map(m => m.id === mesaId ? { ...m, estado: 'pagada' as MesaEstado, updated_at: new Date().toISOString() } : m)
-        set({ pedidos: updatedPedidos, mesas: updatedMesas })
+        set(s => ({ pedidos: updatedPedidos, mesas: updatedMesas, ultimaCuentaPagada: pedidosCobrados.length ? { ...s.ultimaCuentaPagada, [mesaId]: pedidosCobrados } : s.ultimaCuentaPagada }))
         if (clienteEmail && get().fidelidadConfig.habilitado) {
           const puntos = Math.floor((totalCobrado / 1000) * get().fidelidadConfig.puntos_por_1000_gastado)
           if (puntos > 0) get().otorgarPuntos(clienteEmail, puntos)
         }
         const numero = get().mesas.find(m => m.id === mesaId)?.numero
-        if (metodoPago === 'transferencia') get().agregarNotificacion('warning', `🏦 Transferencia recibida — verificar acreditación`, numero)
-        else get().agregarNotificacion('success', `✅ Pago confirmado (${metodoPago}) — mesa lista para liberar`, numero)
+        if (metodoPago === 'transferencia') get().agregarNotificacion('warning', 'Transferencia recibida — verificar acreditación', numero)
+        else get().agregarNotificacion('success', `Pago confirmado (${metodoPago}) — mesa lista para liberar`, numero)
+      },
+
+      prepararPagoManual: (mesaId, propina, clienteEmail) => {
+        let primerPedido = true
+        set(s => ({
+          pedidos: s.pedidos.map(pedido => {
+            if (pedido.mesa_id !== mesaId || pedido.estado === 'cancelado' || pedido.estado === 'pagado') return pedido
+            const esPrimero = primerPedido
+            primerPedido = false
+            return {
+              ...pedido,
+              propina: esPrimero ? propina : 0,
+              cliente_email: clienteEmail.trim().toLowerCase(),
+              updated_at: new Date().toISOString(),
+            }
+          }),
+        }))
       },
 
       marcarPagoManualStaff: (mesaId, metodoPago) => {
-        const updatedPedidos = get().pedidos.map(p => p.mesa_id === mesaId && p.estado !== 'cancelado' && p.estado !== 'pagado' ? { ...p, estado: 'pagado' as const, metodo_pago: metodoPago, confirmado_staff: true, updated_at: new Date().toISOString() } : p)
+        const pedidosCobrados: string[] = []
+        let totalCobrado = 0
+        let clienteEmail = ''
+        const updatedPedidos = get().pedidos.map(p => {
+          if (p.mesa_id !== mesaId || p.estado === 'cancelado' || p.estado === 'pagado') return p
+          pedidosCobrados.push(p.id)
+          totalCobrado += p.total + p.propina
+          if (!clienteEmail && p.cliente_email) clienteEmail = p.cliente_email
+          return { ...p, estado: 'pagado' as const, metodo_pago: metodoPago, confirmado_staff: true, updated_at: new Date().toISOString() }
+        })
         const updatedMesas = get().mesas.map(m => m.id === mesaId ? { ...m, estado: 'pagada' as MesaEstado, updated_at: new Date().toISOString() } : m)
-        set({ pedidos: updatedPedidos, mesas: updatedMesas })
+        set(s => ({
+          pedidos: updatedPedidos,
+          mesas: updatedMesas,
+          ultimaCuentaPagada: pedidosCobrados.length
+            ? { ...s.ultimaCuentaPagada, [mesaId]: pedidosCobrados }
+            : s.ultimaCuentaPagada,
+        }))
+        if (pedidosCobrados.length && clienteEmail && get().fidelidadConfig.habilitado) {
+          const puntos = Math.floor((totalCobrado / 1000) * get().fidelidadConfig.puntos_por_1000_gastado)
+          if (puntos > 0) get().otorgarPuntos(clienteEmail, puntos)
+        }
         const numero = get().mesas.find(m => m.id === mesaId)?.numero
-        get().agregarNotificacion('success', `✅ Pago en ${metodoPago} confirmado por personal`, numero)
+        get().agregarNotificacion('success', `Pago en ${metodoPago} confirmado por personal`, numero)
       },
 
       confirmarTransferenciaStaff: (pedidoId) => {
         set(s => ({ pedidos: s.pedidos.map(p => p.id === pedidoId ? { ...p, confirmado_staff: true } : p) }))
-        get().agregarNotificacion('success', '✅ Transferencia verificada por el personal')
+        get().agregarNotificacion('success', 'Transferencia verificada por el personal')
       },
 
       actualizarMesa: (mesaId, estado) => set(s => ({ mesas: s.mesas.map(m => m.id === mesaId ? { ...m, estado, updated_at: new Date().toISOString() } : m) })),
@@ -296,6 +458,10 @@ export const useStore = create<AppStore>()(
           paneraPromptShown: { ...s.paneraPromptShown, [mesaId]: false },
         }))
         get().agregarNotificacion('info', `Mesa liberada por el personal`, numero)
+      },
+
+      marcarPedidoListo: (pedidoId) => {
+        set(s => ({ pedidos: s.pedidos.map(p => p.id === pedidoId ? { ...p, estado: 'listo' as const, updated_at: new Date().toISOString() } : p) }))
       },
 
       marcarPedidoEntregado: (pedidoId) => {
@@ -333,21 +499,42 @@ export const useStore = create<AppStore>()(
         const { insumos } = get()
         const nuevosInsumos = [...insumos]
         let costoTotal = 0
+        const indiceEnSucursal = (insumoId: string) => {
+          const exacto = nuevosInsumos.findIndex(insumo => insumo.id === insumoId && insumo.sucursal_id === sucursalId)
+          if (exacto >= 0) return exacto
+          const referencia = nuevosInsumos.find(insumo => insumo.id === insumoId)
+          return referencia ? nuevosInsumos.findIndex(insumo => insumo.nombre === referencia.nombre && insumo.sucursal_id === sucursalId) : -1
+        }
         items.forEach(item => {
           item.plato.insumos_requeridos?.forEach(req => {
-            const idx = nuevosInsumos.findIndex(i => i.id === req.insumo_id && i.sucursal_id === sucursalId)
+            const idx = indiceEnSucursal(req.insumo_id)
             if (idx >= 0) {
               const cantidadUsada = req.cantidad_por_porcion * item.cantidad
               costoTotal += cantidadUsada * nuevosInsumos[idx].costo_unitario
               nuevosInsumos[idx] = { ...nuevosInsumos[idx], cantidad: Math.max(0, nuevosInsumos[idx].cantidad - cantidadUsada), ultima_actualizacion: new Date().toISOString() }
               if (nuevosInsumos[idx].cantidad <= nuevosInsumos[idx].cantidad_critica && nuevosInsumos[idx].cantidad > 0) {
-                get().agregarNotificacion('warning', `⚠️ Stock crítico: ${nuevosInsumos[idx].nombre} (${nuevosInsumos[idx].cantidad.toFixed(1)} ${nuevosInsumos[idx].unidad} restantes)`)
+                get().agregarNotificacion('warning', `Stock crítico: ${nuevosInsumos[idx].nombre} (${nuevosInsumos[idx].cantidad.toFixed(1)} ${nuevosInsumos[idx].unidad} restantes)`)
               }
               if (nuevosInsumos[idx].cantidad <= 0) {
-                get().agregarNotificacion('error', `🚨 Sin stock: ${nuevosInsumos[idx].nombre} — algunos platos serán ocultados`)
+                get().agregarNotificacion('error', `Sin stock: ${nuevosInsumos[idx].nombre} — algunos platos serán ocultados`)
               }
             }
           })
+          item.plato.modificadores
+            .flatMap(modificador => modificador.opciones)
+            .filter(opcion => item.modificadores_elegidos.includes(opcion.id))
+            .flatMap(opcion => opcion.insumos_requeridos || [])
+            .forEach(req => {
+              const idx = indiceEnSucursal(req.insumo_id)
+              if (idx < 0) return
+              const cantidadUsada = req.cantidad_por_porcion * item.cantidad
+              costoTotal += cantidadUsada * nuevosInsumos[idx].costo_unitario
+              nuevosInsumos[idx] = {
+                ...nuevosInsumos[idx],
+                cantidad: Math.max(0, nuevosInsumos[idx].cantidad - cantidadUsada),
+                ultima_actualizacion: new Date().toISOString(),
+              }
+            })
         })
         set(s => ({ insumos: nuevosInsumos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico + costoTotal }))
       },
@@ -405,7 +592,7 @@ export const useStore = create<AppStore>()(
         set({ platos: updatedPlatos })
       },
 
-      actualizarPlato: (plato) => set(s => ({ platos: s.platos.map(p => p.id === plato.id ? plato : p) })),
+      actualizarPlato: (plato) => set(s => ({ platos: s.platos.map(p => p.id === plato.id ? { ...plato, precio_pendiente: plato.precio > 0 ? false : plato.precio_pendiente } : p) })),
       agregarPlato: (platoData) => {
         const plato: Plato = { ...platoData, id: 'p' + generarId(), rating: 0, total_reviews: 0 }
         set(s => ({ platos: [...s.platos, plato] }))
@@ -509,11 +696,19 @@ export const useStore = create<AppStore>()(
         try { await fetch('/api/auth/logout', { method: 'POST' }) } catch { /* red caída: igual limpiamos el estado local */ }
         set({ sesionAdmin: null })
       },
+      actualizarPermisoRol: (rol, permiso, habilitado) => {
+        if (rol === 'creator') return
+        set(state => {
+          const actuales = state.permisosAdmin[rol] || PERMISOS_ADMIN_DEFAULT[rol]
+          const siguientes = habilitado ? [...new Set([...actuales, permiso])] : actuales.filter(item => item !== permiso)
+          return { permisosAdmin: { ...state.permisosAdmin, [rol]: siguientes } }
+        })
+      },
 
       llamarMozo: (mesaId, mesaNumero, motivo) => {
         const llamado: LlamadoMozo = { id: generarId(), mesa_id: mesaId, mesa_numero: mesaNumero, motivo, atendido: false, created_at: new Date().toISOString() }
         set(s => ({ llamadosMozo: [llamado, ...s.llamadosMozo] }))
-        get().agregarNotificacion('info', `🔔 Mesa ${mesaNumero} llama al mozo: ${motivo}`, mesaNumero)
+        get().agregarNotificacion('info', `Mesa ${mesaNumero} llama al mozo: ${motivo}`, mesaNumero)
       },
       atenderLlamado: (llamadoId) => set(s => ({ llamadosMozo: s.llamadosMozo.map(l => l.id === llamadoId ? { ...l, atendido: true } : l) })),
 
@@ -548,20 +743,33 @@ export const useStore = create<AppStore>()(
       },
 
       // ── RESEÑAS ──
-      enviarResena: (platoId, rating, comentario, autorEmail) => {
-        const { platos, fidelidadConfig } = get()
+      enviarResena: (pedidoId, platoId, rating, comentario, autorEmail) => {
+        const { platos, pedidos, fidelidadConfig, resenasEnviadas } = get()
+        const pedido = pedidos.find(item => item.id === pedidoId)
+        if (!pedido || pedido.estado !== 'pagado' || pedido.confirmado_staff === false) return { ok: false, error: 'La reseña se habilita después de confirmar el pago.' }
+        if (!pedido.items.some(item => item.plato.id === platoId)) return { ok: false, error: 'Este producto no pertenece al pedido pagado.' }
+        const clave = `${pedidoId}:${platoId}`
+        if (resenasEnviadas[clave]) return { ok: false, error: 'Ya reseñaste este producto.' }
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { ok: false, error: 'Elegí una puntuación de 1 a 5 estrellas.' }
         const plato = platos.find(p => p.id === platoId)
-        if (!plato) return
+        if (!plato) return { ok: false, error: 'El producto ya no está disponible.' }
         const nuevoTotal = plato.total_reviews + 1
         const nuevoRating = Math.round(((plato.rating * plato.total_reviews + rating) / nuevoTotal) * 10) / 10
-        const nuevaResena: ReviewPlato = { id: generarId(), autor: 'Comensal verificado', rating, comentario: comentario.trim(), created_at: new Date().toISOString() }
+        const nuevaResena: ReviewPlato = { id: generarId(), pedido_id: pedidoId, autor: 'Comensal verificado', rating, comentario: comentario.trim(), created_at: new Date().toISOString() }
         const reviews_muestra = [nuevaResena, ...(plato.reviews_muestra || [])].slice(0, 20)
-        set(s => ({ platos: s.platos.map(p => p.id === platoId ? { ...p, rating: nuevoRating, total_reviews: nuevoTotal, reviews_muestra } : p) }))
+        const clavesDeLaCuenta = pedidos
+          .filter(item => item.mesa_id === pedido.mesa_id && item.estado === 'pagado' && item.confirmado_staff !== false && item.items.some(linea => linea.plato.id === platoId))
+          .map(item => `${item.id}:${platoId}`)
+        set(s => ({
+          platos: s.platos.map(p => p.id === platoId ? { ...p, rating: nuevoRating, total_reviews: nuevoTotal, reviews_muestra } : p),
+          resenasEnviadas: clavesDeLaCuenta.reduce((resultado, claveCuenta) => ({ ...resultado, [claveCuenta]: true }), { ...s.resenasEnviadas, [clave]: true }),
+        }))
         if (autorEmail && fidelidadConfig.habilitado && fidelidadConfig.puntos_por_resena > 0) {
           get().otorgarPuntos(autorEmail, fidelidadConfig.puntos_por_resena)
         }
+        return { ok: true }
       },
     }),
-    { name: 'menuflow-store-v7', partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, paneraPromptShown: s.paneraPromptShown }) }
+    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
   )
 )

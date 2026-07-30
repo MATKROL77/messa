@@ -14,7 +14,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 export interface SesionPayload {
   email: string
   nombre: string
-  rol: 'creator' | 'admin' | 'editor'
+  rol: 'creator' | 'admin' | 'editor' | 'staff'
   exp: number
 }
 

@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+interface PreferenciaRequest {
+  monto?: number
+  descripcion?: string
+  mesa_id?: string
+  mesa_numero?: number
+  propina?: number
+  email?: string
+}
+
+interface PreferenciaResponse {
+  init_point?: string
+  id?: string
+}
+
 // Crea una preferencia de pago real en Mercado Pago (Checkout Pro).
 // El Access Token vive SOLO acá, como variable de entorno del servidor
 // (MP_ACCESS_TOKEN) — nunca se manda al cliente ni se guarda en el store.
@@ -7,8 +21,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // use el checkout de demostración (misma UX, sin cobro real).
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as any;
-const { monto, descripcion, mesa_id, mesa_numero, propina, email } = body;
+    const body = await req.json() as PreferenciaRequest
+    const { monto, descripcion, mesa_id, mesa_numero, propina, email } = body
 
     const accessToken = process.env.MP_ACCESS_TOKEN
     if (!accessToken) {
@@ -48,7 +62,7 @@ const { monto, descripcion, mesa_id, mesa_numero, propina, email } = body;
       return NextResponse.json({ demo: true, monto, descripcion, error: 'Mercado Pago rechazó la solicitud. Revisá tu Access Token.' })
     }
 
-    const data = await mpRes.json() as any;
+    const data = await mpRes.json() as PreferenciaResponse
     return NextResponse.json({ demo: false, init_point: data.init_point, preference_id: data.id })
   } catch (err) {
     console.error('Error creando preferencia MP:', err)

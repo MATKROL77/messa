@@ -1,58 +1,86 @@
 'use client'
-import Link from 'next/link'
-import { useStore } from '@/lib/store'
+
+import { useState } from 'react'
+import { Check, Crown, KeyRound, LockKeyhole, Save, ShieldCheck, UserCog, UsersRound } from 'lucide-react'
+import { useStore, type PermisoAdmin } from '@/lib/store'
+import type { RolUsuario } from '@/types'
+import { AdminButton, AdminMetric, AdminPanel, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
+
+const MODULOS: { permiso: PermisoAdmin; label: string; grupo: string }[] = [
+  { permiso: 'resumen', label: 'Resumen', grupo: 'Operación' },
+  { permiso: 'carta', label: 'Carta', grupo: 'Operación' },
+  { permiso: 'salon', label: 'Salón', grupo: 'Operación' },
+  { permiso: 'pedidos', label: 'Pedidos', grupo: 'Operación' },
+  { permiso: 'inventario', label: 'Inventario', grupo: 'Operación' },
+  { permiso: 'reservas', label: 'Reservas', grupo: 'Operación' },
+  { permiso: 'finanzas', label: 'Finanzas', grupo: 'Gestión' },
+  { permiso: 'cobros', label: 'Cobros', grupo: 'Gestión' },
+  { permiso: 'caja', label: 'Caja', grupo: 'Gestión' },
+  { permiso: 'delivery', label: 'Delivery', grupo: 'Gestión' },
+  { permiso: 'fidelidad', label: 'Fidelidad', grupo: 'Gestión' },
+  { permiso: 'sucursales', label: 'Sucursales', grupo: 'Configuración' },
+  { permiso: 'usuarios', label: 'Usuarios', grupo: 'Configuración' },
+  { permiso: 'identidad', label: 'Identidad', grupo: 'Configuración' },
+]
+
+const ROLES: { rol: RolUsuario; label: string; detail: string; Icon: typeof Crown; tone: 'gold' | 'blue' | 'green' | 'amber' }[] = [
+  { rol: 'creator', label: 'Creador', detail: 'Control total e inmutable', Icon: Crown, tone: 'gold' },
+  { rol: 'admin', label: 'Administrador', detail: 'Gestión integral del negocio', Icon: ShieldCheck, tone: 'blue' },
+  { rol: 'editor', label: 'Editor', detail: 'Carta e inventario', Icon: UserCog, tone: 'green' },
+  { rol: 'staff', label: 'Staff', detail: 'Operación de salón', Icon: UsersRound, tone: 'amber' },
+]
 
 export default function UsuariosPage() {
-  const { sesionAdmin } = useStore()
-  const esCreator = sesionAdmin?.rol === 'creator'
+  const { sesionAdmin, permisosAdmin, actualizarPermisoRol } = useStore()
+  const [toast, setToast] = useState('')
+  const puedeEditar = sesionAdmin?.rol === 'creator' || sesionAdmin?.rol === 'admin'
+
+  const toggle = (rol: RolUsuario, permiso: PermisoAdmin) => {
+    if (!puedeEditar || rol === 'creator') return
+    const habilitado = !permisosAdmin[rol]?.includes(permiso)
+    actualizarPermisoRol(rol, permiso, habilitado)
+    setToast(`${habilitado ? 'Acceso habilitado' : 'Acceso restringido'} para ${ROLES.find(item => item.rol === rol)?.label}`)
+    window.setTimeout(() => setToast(''), 2200)
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 40 }}>
-      <div style={{ background: 'var(--bg)', borderBottom: '1px solid #1C1C1C', padding: 16, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 className="font-titulos" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Usuarios & Accesos</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#707070' }}>Autenticación real, verificada en el servidor</p>
-          </div>
-          <Link href="/admin" style={{ textDecoration: 'none', background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#A0A0A0' }}>← Admin</Link>
-        </div>
+    <AdminWorkspace
+      eyebrow="Equipo y seguridad"
+      title="Usuarios"
+      description="Definí qué ve cada rango. La navegación y el acceso a los módulos se actualizan de inmediato."
+      actions={<AdminButton tone="primary" icon={Save} disabled={!puedeEditar} onClick={() => { setToast('Matriz de permisos guardada'); window.setTimeout(() => setToast(''), 2200) }}>Guardar permisos</AdminButton>}
+    >
+      <AdminToast>{toast}</AdminToast>
+
+      <div className="messa-metrics">
+        {ROLES.map(item => <AdminMetric key={item.rol} label={item.label} value={`${permisosAdmin[item.rol]?.length || 0}`} detail={item.detail} Icon={item.Icon} tone={item.tone} progress={((permisosAdmin[item.rol]?.length || 0) / MODULOS.length) * 100} />)}
       </div>
 
-      <div style={{ padding: 16 }}>
-        <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 14, padding: 14, marginBottom: 20 }}>
-          <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: '#22C55E' }}>🔐 Esto ya no vive en el navegador</p>
-          <p style={{ margin: 0, fontSize: 12, color: '#707070', lineHeight: 1.6 }}>Las 3 cuentas (Creador, Dueño, Editor) se verifican con bcrypt en el servidor a partir de variables de entorno — nunca en localStorage ni en el código fuente. Ver <code style={{ color: '#22C55E' }}>.env.example</code>.</p>
+      <AdminPanel eyebrow="Matriz de acceso" title="Permisos por rango" detail="Los cambios controlan el dock, los accesos rápidos y los guards de cada módulo.">
+        <div className="messa-permission-matrix">
+          <div className="messa-permission-row messa-permission-row--header"><span>Módulo</span>{ROLES.map(item => <span key={item.rol}>{item.label}</span>)}</div>
+          {MODULOS.map((modulo, index) => (
+            <div className={`messa-permission-row${index === 0 || MODULOS[index - 1].grupo !== modulo.grupo ? ' messa-permission-row--group' : ''}`} key={modulo.permiso}>
+              <span><b>{modulo.label}</b><small>{modulo.grupo}</small></span>
+              {ROLES.map(item => {
+                const activo = permisosAdmin[item.rol]?.includes(modulo.permiso)
+                const bloqueado = item.rol === 'creator' || !puedeEditar
+                return <button type="button" key={item.rol} className={activo ? 'active' : ''} disabled={bloqueado} onClick={() => toggle(item.rol, modulo.permiso)} aria-label={`${activo ? 'Quitar' : 'Dar'} acceso a ${modulo.label} para ${item.label}`} aria-pressed={activo}>{activo && <Check size={15} />}</button>
+              })}
+            </div>
+          ))}
         </div>
+      </AdminPanel>
 
-        {[
-          { rol: 'creator', label: '👑 Creador', color: '#D4AF37', vars: ['CREATOR_EMAIL', 'CREATOR_PASSWORD_HASH', 'CREATOR_NOMBRE'] },
-          { rol: 'admin', label: '🏢 Dueño / Admin', color: '#3B82F6', vars: ['ADMIN_EMAIL', 'ADMIN_PASSWORD_HASH', 'ADMIN_NOMBRE'] },
-          { rol: 'editor', label: '✏️ Editor', color: '#22C55E', vars: ['EDITOR_EMAIL', 'EDITOR_PASSWORD_HASH', 'EDITOR_NOMBRE'] },
-        ].map(c => (
-          <div key={c.rol} style={{ background: '#141414', border: '1px solid #2A2A2A', borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: c.color }}>{c.label}</p>
-            <p style={{ margin: '0 0 10px', fontSize: 12, color: '#707070' }}>Definida por estas variables de entorno del servidor:</p>
-            {c.vars.map(v => <code key={v} style={{ display: 'block', fontSize: 11, color: '#A0A0A0', background: '#1C1C1C', borderRadius: 8, padding: '6px 10px', marginBottom: 6 }}>{v}</code>)}
-          </div>
-        ))}
-
-        <div style={{ background: '#141414', border: '1px solid #2A2A2A', borderRadius: 16, padding: 16, marginBottom: 12 }}>
-          <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600 }}>🔑 Cómo cambiar una contraseña</p>
-          <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#A0A0A0', lineHeight: 2 }}>
-            <li>Corré: <code style={{ color: '#D4AF37' }}>node scripts/generar-hash.js &quot;TuNuevaContraseña&quot;</code></li>
-            <li>Copiá el hash que te devuelve</li>
-            <li>Actualizá la variable <code style={{ color: '#D4AF37' }}>*_PASSWORD_HASH</code> correspondiente en tu hosting (o en tu <code style={{ color: '#D4AF37' }}>.env</code> local)</li>
-            <li>Redeployá / reiniciá el servidor</li>
-          </ol>
-        </div>
-
-        <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 14, padding: 14 }}>
-          <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: '#F59E0B' }}>⚠️ Crear más editores en tiempo de ejecución</p>
-          <p style={{ margin: 0, fontSize: 12, color: '#707070', lineHeight: 1.6 }}>
-            Todavía no está disponible: agregar una cuenta nueva "al vuelo" desde acá necesita un lugar persistente donde guardarla (una base de datos), y hoy no hay una conectada. Con las variables de entorno actuales alcanza para vos, el dueño y un editor genérico. Cuando conectemos Supabase/D1, esta pantalla va a poder crear, desactivar y resetear cuentas de verdad {esCreator ? '' : '(el creador puede ver más detalle técnico en LEEME.md)'}.
-          </p>
-        </div>
+      <div className="messa-security-grid">
+        <AdminPanel eyebrow="Autenticación" title="Credenciales protegidas" detail="Las contraseñas se verifican en el servidor con hashes, nunca desde el navegador.">
+          <div className="messa-security-feature"><span><LockKeyhole size={18} /></span><div><b>Sesión firmada</b><small>Cookie HTTP-only y validación del lado servidor.</small></div><AdminStatus tone="green">Activo</AdminStatus></div>
+          <div className="messa-security-feature"><span><KeyRound size={18} /></span><div><b>Cuenta actual</b><small>{sesionAdmin?.nombre} · {sesionAdmin?.email}</small></div><AdminStatus tone="gold">{sesionAdmin?.rol}</AdminStatus></div>
+        </AdminPanel>
+        <AdminPanel eyebrow="Alcance" title="Vista de Staff" detail="El rango Staff entra en una operación simplificada, sin módulos financieros ni configuración.">
+          <div className="messa-role-preview"><UsersRound size={25} /><span><b>{permisosAdmin.staff.length} accesos habilitados</b><small>{MODULOS.filter(item => permisosAdmin.staff.includes(item.permiso)).map(item => item.label).join(' · ') || 'Sin accesos'}</small></span></div>
+        </AdminPanel>
       </div>
-    </div>
+    </AdminWorkspace>
   )
 }

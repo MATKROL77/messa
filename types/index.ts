@@ -1,5 +1,5 @@
 export type MesaEstado = 'libre' | 'ocupada' | 'pedido' | 'pagando' | 'pagada'
-export type RolUsuario = 'creator' | 'admin' | 'editor'
+export type RolUsuario = 'creator' | 'admin' | 'editor' | 'staff'
 export type MetodoPago = 'tarjeta' | 'transferencia' | 'mercadopago' | 'efectivo'
 export type OrigenPedido = 'mesa' | 'pedidosya' | 'rappi' | 'ubereats' | 'otro'
 export type PlataformaDelivery = 'pedidosya' | 'rappi' | 'ubereats' | 'otro'
@@ -46,16 +46,26 @@ export interface InsumoRequerido {
   cantidad_por_porcion: number
 }
 
+export interface ModificadorOpcion {
+  id: string
+  nombre: string
+  precio_extra: number
+  /** Consumo adicional producido por esta elección, además de la receta base. */
+  insumos_requeridos?: InsumoRequerido[]
+}
+
 export interface Modificador {
   id: string
   nombre: string
-  opciones: { id: string; nombre: string; precio_extra: number }[]
+  tipo?: 'coccion' | 'acompanamiento' | 'extra' | 'otro'
+  opciones: ModificadorOpcion[]
   obligatorio: boolean
   multiple: boolean
 }
 
 export interface ReviewPlato {
   id: string
+  pedido_id?: string
   autor: string
   rating: number
   comentario: string
@@ -65,9 +75,11 @@ export interface ReviewPlato {
 export interface Plato {
   id: string
   nombre: string
-  descripcion: string
-  precio: number
-  categoria_id: string
+    descripcion: string
+    precio: number
+    /** Evita ofrecer a cocina productos nuevos cuyo importe aún no se cargó. */
+    precio_pendiente?: boolean
+    categoria_id: string
   categoria?: Categoria
   ingredientes: Ingrediente[]
   insumos_requeridos: InsumoRequerido[]
@@ -78,7 +90,26 @@ export interface Plato {
   carbohidratos?: number
   grasas?: number
   imagen_url: string
+  /** Tiempo estimado que ve el comensal y usa cocina. Opcional para no invalidar platos existentes. */
+  tiempo_preparacion_minutos?: number
+    /** Media optimizada. `imagen_url` se conserva como fallback legado. */
+    imagen_card_url?: string
+    imagen_hero_url?: string
+    imagen_recorte_url?: string
+    /** Assets recortados para el sistema visual flotante de MESSA. */
+    imagen_transparente_url?: string
+    imagen_detalle_url?: string
   video_url?: string
+  poster_video_url?: string
+  focal_x?: number
+  focal_y?: number
+  color_fondo_media?: string
+  animacion_media?: 'none' | 'float' | 'parallax' | 'video'
+  /** Define cómo se reserva y escala un asset recortado sin invadir el contenido. */
+  presentacion_media?: {
+    aspecto?: 'redondo' | 'cuadrado' | 'horizontal' | 'vertical'
+    escala?: number
+  }
   disponible: boolean
   destacado: boolean
   orden: number
@@ -92,6 +123,8 @@ export interface Plato {
     emoji: string
     porcentaje_conversion: number
   }[]
+  /** Indicación operativa estable que recibe cocina para este producto. */
+  notas_cocina?: string
 }
 
 export interface Insumo {

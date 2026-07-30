@@ -1,104 +1,119 @@
 'use client'
-import { useState } from 'react'
-import Link from 'next/link'
-import { useStore } from '@/lib/store'
 
-const LOGOS: Record<string, { color: string; emoji: string }> = {
-  pedidosya: { color: '#FF2D55', emoji: '🛵' },
-  rappi: { color: '#FF441F', emoji: '🐻' },
-  ubereats: { color: '#06C167', emoji: '🚗' },
-  otro: { color: '#707070', emoji: '📦' },
-}
+import { useState } from 'react'
+import { CheckCircle2, KeyRound, PlugZap, ShieldAlert, Truck, Unplug, Webhook } from 'lucide-react'
+import { AdminButton, AdminPanel, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
+import { useStore } from '@/lib/store'
 
 export default function IntegracionesPage() {
   const { deliveryIntegraciones, actualizarDeliveryIntegracion } = useStore()
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [form, setForm] = useState({ api_key: '', webhook_url: '' })
-  const [conectando, setConectando] = useState<string | null>(null)
+  const [conectando, setConectando] = useState(false)
   const [toast, setToast] = useState('')
+  const seleccionada = deliveryIntegraciones.find(integracion => integracion.id === editandoId) ?? null
+  const conectadas = deliveryIntegraciones.filter(integracion => integracion.conectado).length
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2600) }
-
-  const handleConectar = (id: string) => {
-    if (!form.api_key.trim()) { showToast('Ingresá una API key'); return }
-    setConectando(id)
-    setTimeout(() => {
-      actualizarDeliveryIntegracion(id, { api_key: form.api_key, webhook_url: form.webhook_url, conectado: true, ultima_conexion: new Date().toISOString() })
-      setConectando(null)
-      setEditandoId(null)
-      showToast('✅ Integración conectada')
-    }, 1200)
+  const showToast = (message: string) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 2600)
   }
 
-  const handleDesconectar = (id: string) => { actualizarDeliveryIntegracion(id, { conectado: false }); showToast('Desconectado') }
+  const openEditor = (id: string) => {
+    const integracion = deliveryIntegraciones.find(item => item.id === id)
+    if (!integracion) return
+    setForm({ api_key: integracion.api_key, webhook_url: integracion.webhook_url })
+    setEditandoId(id)
+  }
+
+  const handleConectar = () => {
+    if (!seleccionada) return
+    if (!form.api_key.trim()) {
+      showToast('Ingresá una API key')
+      return
+    }
+    setConectando(true)
+    window.setTimeout(() => {
+      actualizarDeliveryIntegracion(seleccionada.id, {
+        api_key: form.api_key,
+        webhook_url: form.webhook_url,
+        conectado: true,
+        ultima_conexion: new Date().toISOString(),
+      })
+      setConectando(false)
+      setEditandoId(null)
+      showToast('Configuración guardada')
+    }, 700)
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 40 }}>
-      {toast && <div className="fade-in" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: '#1C1C1C', border: '1px solid #383838', borderRadius: 100, padding: '10px 20px', fontSize: 13, color: '#fff', zIndex: 9999, whiteSpace: 'nowrap' }}>{toast}</div>}
+    <AdminWorkspace
+      eyebrow="Canales externos"
+      title="Apps de delivery"
+      description="Prepará cada canal para centralizar su operación en la misma cocina."
+      actions={<AdminStatus tone={conectadas ? 'green' : 'neutral'}>{conectadas} de {deliveryIntegraciones.length} configuradas</AdminStatus>}
+    >
+      <AdminToast>{toast}</AdminToast>
 
-      <div style={{ background: 'var(--bg)', borderBottom: '1px solid #1C1C1C', padding: 16, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 className="font-titulos" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Apps de Delivery</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#707070' }}>Unificá todos tus pedidos en una sola cocina</p>
-          </div>
-          <Link href="/admin" style={{ textDecoration: 'none', background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#A0A0A0' }}>← Admin</Link>
+      <AdminPanel className="messa-info-callout" eyebrow="Estado real" title="Conexión técnica pendiente">
+        <div className="messa-info-callout__content">
+          <span><ShieldAlert size={20} /></span>
+          <p>MESSA ya dispone del endpoint receptor. La activación real requiere convenio comercial, credenciales oficiales y persistencia de servidor para cada plataforma.</p>
         </div>
-      </div>
+      </AdminPanel>
 
-      <div style={{ padding: 16 }}>
-        <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14, padding: 14, marginBottom: 16 }}>
-          <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: '#EF4444' }}>⚠️ Diferencia importante</p>
-          <p style={{ margin: 0, fontSize: 12, color: '#A0A0A0', lineHeight: 1.6 }}>
-            Lo que ves acá es el <strong>endpoint técnico</strong> (la URL que recibe el aviso de un pedido) — ya está escrito y funciona. Pero &ldquo;conectado&rdquo; en esta pantalla es solo un estado visual local: todavía no hay una integración real con la API de ninguna plataforma (eso requiere el convenio comercial + credenciales reales de cada una), y sin una base de datos conectada, un pedido que llegara por este webhook hoy solo quedaría en el log del servidor — no aparecería en <Link href="/cocina" style={{ color: '#EF4444' }}>Cocina</Link> todavía. Ver LEEME.md para los próximos pasos reales.
-          </p>
-        </div>
-
-        <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 14, padding: 14, marginBottom: 16 }}>
-          <p style={{ margin: 0, fontSize: 12, color: '#A0A0A0', lineHeight: 1.6 }}>🛵 Cuando tengas las credenciales reales de PedidosYa, Rappi o Uber Eats, y la base de datos conectada, los pedidos entrantes van a aparecer en tu <Link href="/cocina" style={{ color: '#8B5CF6' }}>pantalla de cocina</Link> junto a los de salón, identificados con su propio badge.</p>
-        </div>
-
-        {deliveryIntegraciones.map(d => {
-          const logo = LOGOS[d.plataforma]
-          return (
-            <div key={d.id} style={{ background: '#141414', border: d.conectado ? '1px solid rgba(34,197,94,0.3)' : '1px solid #2A2A2A', borderRadius: 16, padding: 16, marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: `${logo.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{logo.emoji}</div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{d.nombre}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#707070' }}>Comisión estimada: {d.comision_porcentaje}%</p>
-                  </div>
-                </div>
-                <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: d.conectado ? 'rgba(34,197,94,0.12)' : '#1C1C1C', color: d.conectado ? '#22C55E' : '#707070' }}>{d.conectado ? '🟢 Config. guardada' : '⚪ Sin configurar'}</span>
+      <section className="messa-integration-grid">
+        {deliveryIntegraciones.map(integracion => (
+          <AdminPanel key={integracion.id} className="messa-integration-card">
+            <header>
+              <span><Truck size={20} /></span>
+              <div>
+                <h2>{integracion.nombre}</h2>
+                <p>Comisión estimada · {integracion.comision_porcentaje}%</p>
               </div>
-
-              {editandoId === d.id ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input value={form.api_key} onChange={e => setForm({ ...form, api_key: e.target.value })} placeholder="API Key / Token" className="input-premium" />
-                  <input value={form.webhook_url} onChange={e => setForm({ ...form, webhook_url: e.target.value })} placeholder="Webhook URL (opcional)" className="input-premium" />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => handleConectar(d.id)} disabled={conectando === d.id} className="btn-gold" style={{ flex: 1, padding: 11, borderRadius: 10, border: 'none', fontSize: 13, cursor: 'pointer' }}>{conectando === d.id ? 'Conectando...' : 'Conectar'}</button>
-                    <button onClick={() => setEditandoId(null)} style={{ padding: '11px 16px', borderRadius: 10, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
-                  </div>
-                </div>
+              <AdminStatus tone={integracion.conectado ? 'green' : 'neutral'}>{integracion.conectado ? 'Configurada' : 'Sin configurar'}</AdminStatus>
+            </header>
+            <p>Los pedidos de este canal se identificarán por origen y compartirán el flujo de preparación del salón.</p>
+            <footer>
+              {integracion.conectado ? (
+                <>
+                  <AdminButton tone="neutral" icon={KeyRound} onClick={() => openEditor(integracion.id)}>Editar acceso</AdminButton>
+                  <AdminButton tone="danger" icon={Unplug} onClick={() => { actualizarDeliveryIntegracion(integracion.id, { conectado: false }); showToast('Integración desconectada') }}>Desconectar</AdminButton>
+                </>
               ) : (
-                d.conectado
-                  ? <button onClick={() => handleDesconectar(d.id)} style={{ width: '100%', padding: 10, borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Desconectar</button>
-                  : <button onClick={() => { setEditandoId(d.id); setForm({ api_key: d.api_key, webhook_url: d.webhook_url }) }} style={{ width: '100%', padding: 10, borderRadius: 10, background: '#1C1C1C', border: '1px solid #2A2A2A', color: '#A0A0A0', fontSize: 12, cursor: 'pointer' }}>🔌 Configurar y conectar</button>
+                <AdminButton tone="primary" icon={PlugZap} onClick={() => openEditor(integracion.id)}>Configurar conexión</AdminButton>
               )}
-            </div>
-          )
-        })}
+            </footer>
+          </AdminPanel>
+        ))}
+      </section>
 
-        <div style={{ background: '#141414', border: '1px solid #2A2A2A', borderRadius: 14, padding: 14, marginTop: 8 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>🔗 Webhook genérico para recibir pedidos</p>
-          <div style={{ background: '#0A0A0A', borderRadius: 10, padding: 12, marginBottom: 8 }}>
-            <code style={{ fontSize: 11, color: '#22C55E', wordBreak: 'break-all' }}>POST /api/webhook/delivery</code>
-          </div>
-          <p style={{ margin: 0, fontSize: 11, color: '#707070', lineHeight: 1.6 }}>Cualquier plataforma que no esté en la lista puede integrarse apuntando su webhook de pedidos a esta URL — el pedido se inyecta directo en la cocina con el origen marcado.</p>
+      <AdminPanel eyebrow="Endpoint disponible" title="Webhook genérico" detail="Para plataformas o canales propios que entreguen pedidos en formato compatible.">
+        <div className="messa-webhook">
+          <Webhook size={18} />
+          <code>POST /api/webhook/delivery</code>
+          <AdminStatus tone="blue">Servidor</AdminStatus>
         </div>
-      </div>
-    </div>
+      </AdminPanel>
+
+      <AdminSheet
+        open={Boolean(seleccionada)}
+        onClose={() => setEditandoId(null)}
+        title={seleccionada ? `Conectar ${seleccionada.nombre}` : 'Conectar canal'}
+        eyebrow="Credenciales de delivery"
+        footer={(
+          <>
+            <AdminButton tone="quiet" onClick={() => setEditandoId(null)}>Cancelar</AdminButton>
+            <AdminButton tone="primary" icon={CheckCircle2} disabled={conectando} onClick={handleConectar}>{conectando ? 'Verificando…' : 'Guardar conexión'}</AdminButton>
+          </>
+        )}
+      >
+        <div className="messa-form-stack">
+          <label><span>API key o token</span><input value={form.api_key} onChange={event => setForm(current => ({ ...current, api_key: event.target.value }))} placeholder="Ingresá la credencial oficial" autoComplete="off" /></label>
+          <label><span>Webhook asignado</span><input value={form.webhook_url} onChange={event => setForm(current => ({ ...current, webhook_url: event.target.value }))} placeholder="https://…" inputMode="url" /></label>
+          <p className="messa-form-help">La credencial queda en el estado local de esta demo. En producción debe guardarse cifrada del lado del servidor.</p>
+        </div>
+      </AdminSheet>
+    </AdminWorkspace>
   )
 }
