@@ -26,6 +26,15 @@ pnpm build
 pnpm cf:build
 ```
 
+## Publicación
+
+- **Vista previa estática** (GitHub Pages): se publica automáticamente en cada
+  push mediante `.github/workflows/pages.yml`. No incluye las rutas de servidor,
+  así que el login, los cobros y los códigos de mesa firmados quedan en modo
+  demostración, con un aviso visible en pantalla.
+- **Despliegue completo** (Cloudflare Workers): `pnpm cf:deploy`, con todas las
+  funciones activas.
+
 ## Cloudflare
 
 MESSA usa OpenNext para generar un Worker compatible con Cloudflare:

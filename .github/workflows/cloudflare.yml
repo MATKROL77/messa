@@ -1,0 +1,47 @@
+name: Despliegue completo en Cloudflare
+
+# Publica MESSA con TODO funcionando: login con bcrypt, cobro real con Mercado
+# Pago y códigos de mesa firmados en el servidor.
+#
+# Antes del primer uso hay que cargar los secretos del repositorio
+# (Settings → Secrets and variables → Actions):
+#
+#   CLOUDFLARE_API_TOKEN   token con permiso "Edit Cloudflare Workers"
+#   CLOUDFLARE_ACCOUNT_ID  id de la cuenta de Cloudflare
+#
+# Y las variables del Worker con `wrangler secret put` (una vez, desde tu
+# máquina): SESSION_SECRET, CREATOR_EMAIL, CREATOR_PASSWORD_HASH, etc.
+# Ver LEEME.md.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verificar tipos y estilo
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm lint
+
+      - name: Construir y desplegar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm cf:deploy

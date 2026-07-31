@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import MessaWordmark from '@/components/messa-wordmark'
+import PublicThemeToggle from '@/components/menu/PublicThemeToggle'
 import { useStore } from '@/lib/store'
+import { withBasePath } from '@/lib/base-path'
 import type { RolUsuario } from '@/types'
 
 interface LoginResponse {
@@ -24,12 +26,12 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
     setCargando(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(withBasePath('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -50,42 +52,46 @@ export default function LoginPage() {
 
   return (
     <div className="messa-login">
-      <div style={{ textAlign: 'center', marginBottom: 36 }}>
+      <div className="messa-login__toolbar"><PublicThemeToggle compact /></div>
+
+      <div className="messa-login__brand">
         <MessaWordmark className="messa-login__wordmark" />
-        <p style={{ color: '#707070', fontSize: 13, margin: 0 }}>Panel de administración</p>
+        <p>Panel de administración</p>
       </div>
 
       <form onSubmit={handleSubmit} className="messa-login__card">
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Email</p>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@restaurante.com" required className="input-premium" autoComplete="username" />
+        <div className="messa-login__field">
+          <label htmlFor="login-email">Email</label>
+          <input id="login-email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="tu@restaurante.com" required className="input-premium" autoComplete="username" />
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 12, color: '#707070' }}>Contraseña</p>
-          <div style={{ position: 'relative' }}>
-            <input type={mostrarPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required className="input-premium" style={{ paddingRight: 44 }} autoComplete="current-password" />
-            <button type="button" aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setMostrarPassword(!mostrarPassword)} style={{ alignItems: 'center', display: 'flex', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#707070', cursor: 'pointer' }}>{mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+
+        <div className="messa-login__field">
+          <label htmlFor="login-password">Contraseña</label>
+          <div className="messa-login__password">
+            <input id="login-password" type={mostrarPassword ? 'text' : 'password'} value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" required className="input-premium" autoComplete="current-password" />
+            <button type="button" aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setMostrarPassword(valor => !valor)}>
+              {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         </div>
 
-        {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, padding: '10px 12px', marginBottom: 16 }}><p style={{ margin: 0, fontSize: 12, color: '#EF4444' }}>{error}</p></div>}
+        {error && <p className="messa-login__error" role="alert">{error}</p>}
 
         <button type="submit" disabled={cargando} className="messa-login__submit">
-          {cargando ? 'Verificando...' : 'Iniciar sesión'}
+          {cargando ? 'Verificando…' : 'Iniciar sesión'}
         </button>
 
-        <div style={{ marginTop: 18, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: 12 }}>
-          <p style={{ alignItems: 'flex-start', display: 'flex', gap: 7, margin: 0, fontSize: 11, color: '#707070', lineHeight: 1.7 }}>
-            <ShieldCheck size={16} style={{ flexShrink: 0, marginTop: 1 }} /> <span>El login se verifica en el servidor con bcrypt — las cuentas se configuran como variables de entorno (ver <code style={{ color: '#3B82F6' }}>.env.example</code>).</span>
-          </p>
-        </div>
-
-        <div style={{ marginTop: 12, textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 11, color: '#484848' }}>¿Olvidaste tu contraseña? El creador puede generar una nueva y actualizar la variable de entorno.</p>
+        <div className="messa-login__note">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>
+            El login se verifica en el servidor con bcrypt. Las cuentas se configuran como
+            variables de entorno (ver <code>.env.example</code>). Si el hash lleva <code>$</code>,
+            escapalos como <code>\$</code> en el archivo <code>.env</code>.
+          </span>
         </div>
       </form>
 
-      <Link href="/" style={{ alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', textAlign: 'center', display: 'flex', marginTop: 20, color: '#707070', fontSize: 13 }}><ArrowLeft size={15} />Volver al inicio</Link>
+      <Link href="/" className="messa-login__back"><ArrowLeft size={15} />Volver al inicio</Link>
     </div>
   )
 }

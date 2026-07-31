@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, Store, UsersRound, UtensilsCrossed, X } from 'lucide-react'
+import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LogOut, MapPinned, Package, PackageSearch, Palette, QrCode, ReceiptText, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
 import { useStore, type PermisoAdmin } from '@/lib/store'
 import type { RolUsuario } from '@/types'
 import MessaWordmark from '@/components/messa-wordmark'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import { limpiarIconoLegacy } from '@/lib/utils'
+import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
+import { withBasePath } from '@/lib/base-path'
 
 const PERMISO_RUTA: { prefix: string; permiso: PermisoAdmin }[] = [
   { prefix: '/admin/tema', permiso: 'identidad' },
@@ -40,6 +42,7 @@ const OPERACION: DockItem[] = [
   { href: '/admin', label: 'Resumen', Icon: LayoutDashboard, exact: true },
   { href: '/admin/carta', label: 'Carta', Icon: UtensilsCrossed },
   { href: '/dashboard', label: 'Salón', Icon: MapPinned, exact: true },
+  { href: '/admin/mesas', label: 'Mesas y QR', Icon: QrCode },
   { href: '/cocina', label: 'Ver pedidos', Icon: ChefHat, exact: true },
   { href: '/admin/stock', label: 'Inventario', Icon: Package },
   { href: '/reservas', label: 'Reservas', Icon: CalendarDays, exact: true },
@@ -84,20 +87,29 @@ function DockLink({ item, pathname }: { item: DockItem; pathname: string }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual, notificaciones, marcarNotificacionLeida, permisosAdmin, initStore } = useStore()
+  const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual, notificaciones, marcarNotificacionLeida, limpiarNotificaciones, permisosAdmin, initStore } = useStore()
   const [verificando, setVerificando] = useState(true)
   const [sucursalesAbiertas, setSucursalesAbiertas] = useState(false)
   const [alertasAbiertas, setAlertasAbiertas] = useState(false)
 
   useEffect(() => {
     initStore()
-    fetch('/api/auth/me')
+    fetch(withBasePath('/api/auth/me'))
       .then(response => {
         if (response.ok) return response.json()
         throw new Error('No autorizado')
       })
       .then((data: { nombre: string; email: string; rol: RolUsuario }) => setSesionAdmin({ nombre: data.nombre, email: data.email, rol: data.rol }))
-      .catch(() => setSesionAdmin(null))
+      .catch(() => {
+        // La vista previa estática no tiene backend de autenticación: se abre
+        // el panel con datos de demostración y un aviso visible. En el
+        // despliegue real esta rama no se ejecuta y sigue haciendo falta login.
+        if (MODO_VISTA_PREVIA) {
+          setSesionAdmin({ nombre: 'Vista previa', email: 'demo@messa.app', rol: 'creator' })
+          return
+        }
+        setSesionAdmin(null)
+      })
       .finally(() => setVerificando(false))
   }, [initStore, setSesionAdmin])
 
@@ -125,6 +137,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="admin-shell">
       <div className="admin-ambient" aria-hidden="true" />
+      {MODO_VISTA_PREVIA && (
+        <p className="admin-preview-banner" role="status">
+          Vista previa estática · datos de demostración, sin servidor. El login real, los pagos y los códigos de mesa firmados funcionan en el despliegue completo.
+        </p>
+      )}
 
       <div className="admin-dock-stack">
       <aside className="admin-sidebar" aria-label="Navegación administrativa">
@@ -164,6 +181,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {alertasAbiertas && <div className="admin-topbar-popover admin-notification-popover" role="dialog" aria-label="Notificaciones">
                 <header><span><b>Actividad reciente</b><small>{alertasPendientes.length} pendientes</small></span><button type="button" onClick={() => setAlertasAbiertas(false)} aria-label="Cerrar notificaciones"><X size={15} /></button></header>
                 <div>{notificaciones.length ? notificaciones.slice(0, 6).map(notificacion => <button type="button" key={notificacion.id} className={notificacion.leida ? 'read' : ''} onClick={() => marcarNotificacionLeida(notificacion.id)}><i className={`admin-notification-dot admin-notification-dot--${notificacion.tipo}`} /><span><b>{limpiarIconoLegacy(notificacion.mensaje)}</b><small>{new Date(notificacion.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</small></span>{!notificacion.leida && <Check size={14} />}</button>) : <p>No hay notificaciones todavía.</p>}</div>
+                {notificaciones.length > 0 && <footer className="admin-notification-popover__footer"><button type="button" onClick={() => { limpiarNotificaciones(); setAlertasAbiertas(false) }}><Trash2 size={14} />Vaciar historial</button></footer>}
               </div>}
             </div>
             <span className="admin-profile" title={sesionAdmin.nombre}><CircleUserRound size={18} aria-hidden="true" /><span>{sesionAdmin.nombre}</span></span>

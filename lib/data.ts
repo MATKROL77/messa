@@ -77,7 +77,15 @@ export const platosIniciales: Plato[] = [
 
 
 export const propinaConfigInicial: PropinaConfig = { habilitada: true, opciones: [10, 15, 20], permitir_personalizado: true }
-export const temaInicial: Tema = { color_primario: '#356B53', color_fondo: '#F5F2EA', fuente_titulos: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", nombre_marca: 'MESSA', logo_emoji: 'M' }
+/**
+ * El dorado es la identidad por defecto de MESSA y se aplica a la carta, a la
+ * mesa y al panel. `VERDE_HEREDADO` era el valor anterior: `initStore` lo
+ * detecta en instalaciones viejas y lo migra al dorado.
+ */
+export const MESSA_DORADO = '#C69A3F'
+export const VERDE_HEREDADO = '#356B53'
+
+export const temaInicial: Tema = { color_primario: MESSA_DORADO, color_fondo: '#F5F2EA', fuente_titulos: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", nombre_marca: 'MESSA', logo_emoji: 'M' }
 
 export const deliveryIntegracionesIniciales: ConfigDelivery[] = [
   { id: 'del1', plataforma: 'pedidosya', nombre: 'PedidosYa', conectado: false, api_key: '', webhook_url: '', comision_porcentaje: 27 },

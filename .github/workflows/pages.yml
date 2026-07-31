@@ -1,0 +1,73 @@
+name: Vista previa en GitHub Pages
+
+# Publica una vista previa navegable de MESSA en GitHub Pages.
+#
+# Importante: GitHub Pages sólo sirve archivos estáticos, así que esta versión
+# NO incluye las rutas de servidor (`app/api/*`): no hay login real con bcrypt,
+# ni cobro con Mercado Pago, ni códigos de mesa firmados en el servidor. La app
+# lo detecta con NEXT_PUBLIC_MESSA_PREVIEW y lo avisa en pantalla.
+#
+# El despliegue completo, con todo eso funcionando, es el de Cloudflare
+# (`.github/workflows/cloudflare.yml` o `pnpm cf:deploy`).
+
+on:
+  push:
+    branches: [main, claude/messa-review-polish-wmd693]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Quitar las rutas de servidor
+        # `output: export` no admite route handlers. Se eliminan sólo en esta
+        # build de vista previa; el repositorio no se toca.
+        run: rm -rf app/api
+
+      - name: Construir la exportación estática
+        env:
+          MESSA_STATIC_EXPORT: '1'
+          NEXT_PUBLIC_MESSA_PREVIEW: '1'
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: pnpm build
+
+      - name: Evitar que Jekyll ignore los archivos _next
+        run: touch out/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

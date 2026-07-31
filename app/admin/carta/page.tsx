@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChefHat, Clock3, Eye, EyeOff, FolderCog, ImageIcon, Link2, ListChecks, Pencil, Plus, Search, Sparkles, Star, Trash2, UtensilsCrossed } from 'lucide-react'
+import { Check, ChefHat, Clock3, Eye, EyeOff, FolderCog, ImageIcon, Link2, ListChecks, Pencil, Plus, Search, Sparkles, Star, Trash2, UtensilsCrossed } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import type { Ingrediente, Insumo, Modificador, Plato } from '@/types'
 import { formatPrecio, generarId } from '@/lib/utils'
@@ -37,6 +37,9 @@ export default function CartaAdminPage() {
     categoriasDisponibles,
     agregarCategoria,
     eliminarCategoria,
+    tagsDisponibles,
+    agregarTagDisponible,
+    eliminarTagDisponible,
     insumos,
     sucursalActualId,
   } = useStore()
@@ -47,6 +50,7 @@ export default function CartaAdminPage() {
   const [eliminando, setEliminando] = useState<Plato | null>(null)
   const [categoriasAbiertas, setCategoriasAbiertas] = useState(false)
   const [nuevaCategoria, setNuevaCategoria] = useState('')
+  const [nuevaEtiqueta, setNuevaEtiqueta] = useState('')
   const [toast, setToast] = useState('')
 
   const showToast = (mensaje: string) => {
@@ -160,6 +164,7 @@ export default function CartaAdminPage() {
         form={editando}
         title={editando ? `Editar ${editando.nombre}` : ''}
         categorias={categoriasDisponibles}
+        etiquetas={tagsDisponibles}
         insumos={insumos.filter(item => item.sucursal_id === sucursalActualId)}
         productos={platos}
         onChange={form => setEditando(form as Plato | null)}
@@ -170,6 +175,7 @@ export default function CartaAdminPage() {
         form={nuevo}
         title="Nuevo producto"
         categorias={categoriasDisponibles}
+        etiquetas={tagsDisponibles}
         insumos={insumos.filter(item => item.sucursal_id === sucursalActualId)}
         productos={platos}
         onChange={form => setNuevo(form as Omit<Plato, 'id' | 'rating' | 'total_reviews'> | null)}
@@ -177,7 +183,7 @@ export default function CartaAdminPage() {
         onSave={crearProducto}
       />
 
-      <AdminSheet open={categoriasAbiertas} onClose={() => setCategoriasAbiertas(false)} eyebrow="Organización" title="Categorías de la carta">
+      <AdminSheet open={categoriasAbiertas} onClose={() => setCategoriasAbiertas(false)} eyebrow="Organización" title="Categorías y etiquetas">
         <div className="messa-category-list">
           {categoriasDisponibles.map(item => (
             <div className="messa-category-row" key={item.id}>
@@ -192,12 +198,40 @@ export default function CartaAdminPage() {
         <div className="messa-form-field">
           <label htmlFor="nueva-categoria">Nueva categoría</label>
           <div className="messa-inline-form">
-            <input id="nueva-categoria" className="input-premium" value={nuevaCategoria} onChange={event => setNuevaCategoria(event.target.value)} placeholder="Ej. Pizzas" />
+            <input id="nueva-categoria" className="input-premium" value={nuevaCategoria} onChange={event => setNuevaCategoria(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); if (nuevaCategoria.trim()) { agregarCategoria(nuevaCategoria.trim(), '•'); setNuevaCategoria(''); showToast('Categoría creada') } } }} placeholder="Ej. Pizzas" />
             <AdminButton tone="primary" icon={Plus} onClick={() => {
               if (!nuevaCategoria.trim()) return
               agregarCategoria(nuevaCategoria.trim(), '•')
               setNuevaCategoria('')
               showToast('Categoría creada')
+            }}>Agregar</AdminButton>
+          </div>
+        </div>
+
+        {/* Las etiquetas dietarias son las que el comensal usa para filtrar la
+            carta. Antes sólo se podían escribir sueltas en cada producto, sin
+            un lugar donde ver ni depurar la lista completa. */}
+        <div className="messa-form-field messa-form-field--wide">
+          <label htmlFor="nueva-etiqueta">Etiquetas dietarias · filtros de la carta pública</label>
+          <div className="messa-tag-list">
+            {tagsDisponibles.map(tag => {
+              const enUso = platos.filter(plato => plato.tags.includes(tag)).length
+              return (
+                <span key={tag}>
+                  <b>{tag}</b><small>{enUso}</small>
+                  <button type="button" aria-label={`Eliminar la etiqueta ${tag}`} onClick={() => { eliminarTagDisponible(tag); showToast('Etiqueta eliminada') }}><Trash2 size={13} /></button>
+                </span>
+              )
+            })}
+            {tagsDisponibles.length === 0 && <p className="messa-form-hint">Sin etiquetas todavía.</p>}
+          </div>
+          <div className="messa-inline-form">
+            <input id="nueva-etiqueta" className="input-premium" value={nuevaEtiqueta} onChange={event => setNuevaEtiqueta(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); if (nuevaEtiqueta.trim()) { agregarTagDisponible(nuevaEtiqueta); setNuevaEtiqueta(''); showToast('Etiqueta creada') } } }} placeholder="Ej. Sin Lactosa" />
+            <AdminButton tone="primary" icon={Plus} onClick={() => {
+              if (!nuevaEtiqueta.trim()) return
+              agregarTagDisponible(nuevaEtiqueta)
+              setNuevaEtiqueta('')
+              showToast('Etiqueta creada')
             }}>Agregar</AdminButton>
           </div>
         </div>
@@ -225,10 +259,11 @@ export default function CartaAdminPage() {
   )
 }
 
-function ProductSheet<T extends Plato | Omit<Plato, 'id' | 'rating' | 'total_reviews'>>({ form, title, categorias, insumos, productos, onChange, onClose, onSave }: {
+function ProductSheet<T extends Plato | Omit<Plato, 'id' | 'rating' | 'total_reviews'>>({ form, title, categorias, etiquetas, insumos, productos, onChange, onClose, onSave }: {
   form: T | null
   title: string
   categorias: { id: string; nombre: string }[]
+  etiquetas: string[]
   insumos: Insumo[]
   productos: Plato[]
   onChange: (form: T | null) => void
@@ -404,8 +439,24 @@ function ProductSheet<T extends Plato | Omit<Plato, 'id' | 'rating' | 'total_rev
           <textarea id="producto-nota-cocina" className="input-premium" rows={2} value={form.notas_cocina || ''} onChange={event => update('notas_cocina', event.target.value as T['notas_cocina'])} placeholder="Ej. Emplatar salsa aparte y confirmar alergias." />
         </div>
         <div className="messa-form-field messa-form-field--wide">
-          <label htmlFor="producto-tags">Etiquetas dietarias</label>
-          <input id="producto-tags" className="input-premium" value={form.tags.join(', ')} onChange={event => update('tags', event.target.value.split(',').map(item => item.trim()).filter(Boolean) as T['tags'])} placeholder="Sin TACC, Vegetariano" />
+          <label>Etiquetas dietarias</label>
+          <div className="messa-tag-picker">
+            {etiquetas.map(tag => {
+              const activo = form.tags.includes(tag)
+              return (
+                <button
+                  type="button"
+                  key={tag}
+                  className={activo ? 'active' : ''}
+                  aria-pressed={activo}
+                  onClick={() => update('tags', (activo ? form.tags.filter(item => item !== tag) : [...form.tags, tag]) as T['tags'])}
+                >
+                  {activo && <Check size={13} />}{tag}
+                </button>
+              )
+            })}
+          </div>
+          <p className="messa-form-hint">Estas etiquetas son los filtros que ve el comensal. Se administran desde el botón «Categorías».</p>
         </div>
 
         <div className="messa-form-field messa-form-field--wide messa-form-section">

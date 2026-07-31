@@ -44,6 +44,61 @@ Reiniciá el servidor y ya podés entrar a `/login` con esas credenciales reales
 
 ---
 
+## 🔐 Acceso a la mesa por QR, código y RFID/NFC
+
+Cada mesa tiene un **código alfanumérico** (`XXXX-XXXX`) que viaja dentro de su
+QR. Sin ese código la mesa no abre: escribir `/mesa/m2` a mano ahora muestra una
+pantalla de acceso, y `?staff=true` exige sesión real del panel.
+
+El código lo **deriva el servidor** con HMAC-SHA256 a partir del id de la mesa y
+una clave que sólo vive en variables de entorno, así que el navegador no puede
+calcular el de la mesa de al lado.
+
+Todo se administra en **Administración → Mesas y códigos QR**: hoja imprimible
+con un QR por mesa, descarga PNG individual, vinculación de tarjetas RFID/NFC,
+alta y baja de mesas, y regeneración de códigos.
+
+Detalle completo y límites conocidos: [docs/qr-mesas-y-rfid.md](./docs/qr-mesas-y-rfid.md).
+
+---
+
+## 🌐 Dónde se publica
+
+| | Vista previa (GitHub Pages) | Despliegue completo (Cloudflare) |
+|---|---|---|
+| Carta, modo vista, mesa, panel | ✅ | ✅ |
+| Login real con bcrypt | ❌ (entra en modo demo, con aviso) | ✅ |
+| Cobro con Mercado Pago | ❌ | ✅ |
+| Códigos de mesa firmados en el servidor | ❌ (semilla pública de demo) | ✅ |
+
+- **Vista previa**: se publica sola en cada push con
+  `.github/workflows/pages.yml`. Hay que habilitarla una vez en
+  *Settings → Pages → Source: GitHub Actions*.
+- **Despliegue completo**: `pnpm cf:deploy`, o el workflow
+  `.github/workflows/cloudflare.yml` cargando los secretos
+  `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+
+---
+
+## ⚠️ Los hash de bcrypt en el archivo `.env`
+
+Un hash de bcrypt empieza con `$2b$12$…`, y Next.js **expande variables** dentro
+de los archivos `.env`: `$2b` y `$12` se reemplazan por vacío y el hash queda
+roto. El login falla con "Email o contraseña incorrectos" aunque la contraseña
+sea la correcta.
+
+Escapá cada `$` con una barra invertida al pegarlo en `.env`:
+
+```
+CREATOR_PASSWORD_HASH=\$2b\$12\$K1x...
+```
+
+`node scripts/generar-hash.js "tu contraseña"` ya imprime las dos versiones: la
+escapada para `.env` y la original para `wrangler secret put`, donde no hace
+falta escapar nada.
+
+---
+
 ## ☁️ Deploy en Cloudflare
 
 ```bash
@@ -127,9 +182,9 @@ Cambiar una contraseña: `node scripts/generar-hash.js "nueva"` → actualizar l
 
 ## 🗺️ Mapa de páginas
 
-**Comensales:** `/` · `/vista` · `/mesa/[id]`
+**Comensales:** `/` · `/vista` · `/m/[codigo]` (destino del QR) · `/rfid/[tag]` · `/mesa/[id]` (requiere código)
 **Staff (sin login):** `/dashboard` · `/cocina` · `/encargos` · `/reservas`
-**Admin (login en `/login`):** `/admin` · `/admin/carta` · `/admin/stock` · `/admin/mesas` · `/admin/sucursales` · `/admin/pagos` · `/admin/finanzas` · `/admin/cierre` · `/admin/integraciones` · `/admin/fidelidad` (creador) · `/admin/usuarios` · `/admin/tema` (creador)
+**Admin (login en `/login`):** `/admin` · `/admin/carta` · `/admin/mesas` (QR y RFID) · `/admin/stock` · `/admin/mesas` · `/admin/sucursales` · `/admin/pagos` · `/admin/finanzas` · `/admin/cierre` · `/admin/integraciones` · `/admin/fidelidad` (creador) · `/admin/usuarios` · `/admin/tema` (creador)
 
 ## 🛠 Stack técnico
 

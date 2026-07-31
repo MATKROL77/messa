@@ -1,14 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, MapPinned, PackageSearch, Phone, Plus, Store, Trash2, UsersRound } from 'lucide-react'
+import { Building2, MapPinned, PackageSearch, Pencil, Phone, Plus, Store, Trash2, UsersRound } from 'lucide-react'
 import { AdminButton, AdminPanel, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
 import { useStore } from '@/lib/store'
 
 export default function SucursalesPage() {
-  const { sucursales, sucursalActualId, setSucursalActual, crearSucursal, eliminarSucursal, mesas, insumos } = useStore()
+  const { sucursales, sucursalActualId, setSucursalActual, crearSucursal, editarSucursal, eliminarSucursal, mesas, insumos } = useStore()
   const [creando, setCreando] = useState(false)
+  const [editandoId, setEditandoId] = useState<string | null>(null)
   const [form, setForm] = useState({ nombre: '', direccion: '', telefono: '' })
+  const [edicion, setEdicion] = useState({ nombre: '', direccion: '', telefono: '' })
   const [toast, setToast] = useState('')
 
   const showToast = (message: string) => {
@@ -62,6 +64,7 @@ export default function SucursalesPage() {
               </div>
               <footer>
                 {!esActual && <AdminButton tone="primary" icon={MapPinned} onClick={() => { setSucursalActual(sucursal.id); showToast(`Ahora trabajás en ${sucursal.nombre}`) }}>Usar esta sucursal</AdminButton>}
+                <AdminButton tone="neutral" icon={Pencil} onClick={() => { setEditandoId(sucursal.id); setEdicion({ nombre: sucursal.nombre, direccion: sucursal.direccion, telefono: sucursal.telefono }) }}>Editar datos</AdminButton>
                 {sucursales.length > 1 && <AdminButton tone="danger" icon={Trash2} onClick={() => handleEliminar(sucursal.id)}>Eliminar</AdminButton>}
               </footer>
             </AdminPanel>
@@ -85,7 +88,33 @@ export default function SucursalesPage() {
           <label><span>Nombre</span><input value={form.nombre} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} placeholder="Kansas Puerto Madero" /></label>
           <label><span>Dirección</span><input value={form.direccion} onChange={event => setForm(current => ({ ...current, direccion: event.target.value }))} placeholder="Av. Alicia M. de Justo 1200" /></label>
           <label><span>Teléfono</span><input value={form.telefono} onChange={event => setForm(current => ({ ...current, telefono: event.target.value }))} placeholder="11 0000-0000" inputMode="tel" /></label>
-          <p className="messa-form-help">Después de crearla podés sumar mesas desde Control de salón y cargar su stock desde Inventario.</p>
+          <p className="messa-form-help">Después de crearla podés sumar mesas y sus QR desde Mesas y códigos QR, y cargar su stock desde Inventario.</p>
+        </div>
+      </AdminSheet>
+
+      <AdminSheet
+        open={Boolean(editandoId)}
+        onClose={() => setEditandoId(null)}
+        title="Editar sucursal"
+        eyebrow="Datos del local"
+        footer={(
+          <>
+            <AdminButton tone="quiet" onClick={() => setEditandoId(null)}>Cancelar</AdminButton>
+            <AdminButton tone="primary" icon={Building2} onClick={() => {
+              if (!editandoId) return
+              if (!edicion.nombre.trim()) { showToast('El nombre no puede quedar vacío'); return }
+              editarSucursal(editandoId, edicion)
+              setEditandoId(null)
+              showToast('Sucursal actualizada')
+            }}>Guardar cambios</AdminButton>
+          </>
+        )}
+      >
+        <div className="messa-form-stack">
+          <label><span>Nombre</span><input value={edicion.nombre} onChange={event => setEdicion(current => ({ ...current, nombre: event.target.value }))} /></label>
+          <label><span>Dirección</span><input value={edicion.direccion} onChange={event => setEdicion(current => ({ ...current, direccion: event.target.value }))} /></label>
+          <label><span>Teléfono</span><input value={edicion.telefono} onChange={event => setEdicion(current => ({ ...current, telefono: event.target.value }))} inputMode="tel" /></label>
+          <p className="messa-form-help">Estos datos se muestran en la portada pública y en el pie de la carta.</p>
         </div>
       </AdminSheet>
     </AdminWorkspace>

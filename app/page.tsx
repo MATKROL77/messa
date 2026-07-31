@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowRight, Clock3, MapPin, Utensils } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import DishMedia from '@/components/menu/DishMedia'
+import Footer from '@/components/Footer'
 
 export default function Home() {
   const { initStore, config, platos, sucursales, sucursalActualId } = useStore()
@@ -19,6 +20,6 @@ export default function Home() {
       {featured && <div className="messa-home__dish"><DishMedia plato={featured} variant="hero" /><div className="messa-home__dish-label"><span>SELECCIÓN DEL CHEF</span><strong>{featured.nombre}</strong></div></div>}
     </section>
     <section className="messa-home__info"><div><MapPin size={19} /><span><b>{branch?.nombre || config.nombre}</b><small>{branch?.direccion || 'Ubicación a confirmar'}</small></span></div><div><Clock3 size={19} /><span><b>Abierto hoy</b><small>Horarios del restaurante</small></span></div><div><Utensils size={19} /><span><b>Pedido desde la mesa</b><small>Escaneá el QR al sentarte</small></span></div></section>
-    <footer className="messa-home__footer">{config.nombre} · MESSA</footer>
+    <Footer nombre={config.nombre} />
   </main>
 }

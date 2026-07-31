@@ -9,7 +9,10 @@ async function main() {
     return
   }
   const hash = bcrypt.hashSync(password, 12)
-  console.log('\nPegá esto en tu .env:\n')
+  console.log('\nPara tu archivo .env (con los "$" escapados, porque Next.js')
+  console.log('expande variables dentro de los .env y si no el hash se rompe):\n')
+  console.log(hash.replace(/\$/g, '\\$'))
+  console.log('\nPara `wrangler secret put` o el panel de tu hosting (sin escapar):\n')
   console.log(hash)
   console.log('')
 }
