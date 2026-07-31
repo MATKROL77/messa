@@ -24,6 +24,16 @@ export interface Mesa {
   capacidad: number
   sucursal_id: string
   nota_staff?: string
+  /**
+   * Copia local del código alfanumérico que viaja dentro del QR. La fuente de
+   * verdad es el servidor, que lo deriva de `id + codigo_version`; acá se
+   * guarda sólo para dibujar el QR y la hoja de impresión sin volver a pedirlo.
+   */
+  codigo_acceso?: string
+  /** Sube en uno cada vez que se regenera el código, cambiando el QR impreso. */
+  codigo_version?: number
+  /** UID del tag RFID/NFC pegado a la mesa, si el local usa lectores o stickers. */
+  rfid_tag?: string
   created_at: string
   updated_at: string
 }

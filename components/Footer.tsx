@@ -1,11 +1,17 @@
-export default function Footer() {
+/**
+ * Pie de las pantallas públicas. Existía como componente pero no se usaba en
+ * ninguna página, y traía colores fijos del tema oscuro anterior (invisible
+ * sobre la carta clara). Ahora usa los tokens de la marca y cierra tanto la
+ * portada como la carta en modo vista.
+ */
+export default function Footer({ nombre }: { nombre?: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '28px 20px 90px', borderTop: '1px solid #1C1C1C', marginTop: 24 }}>
-      <p style={{ margin: 0, fontSize: 11, color: '#484848', lineHeight: 1.8 }}>
-        Creado por <span style={{ color: '#707070', fontWeight: 600 }}>Matías Colimodio</span>
-        <br />
-        Contacto: <a href="mailto:matiascolimodio@gmail.com" style={{ color: '#707070' }}>matiascolimodio@gmail.com</a>
+    <footer className="messa-credit">
+      <span>{nombre ? `${nombre} · ` : ''}MESSA</span>
+      <p>
+        Creado por <b>Matías Colimodio</b> ·{' '}
+        <a href="mailto:matiascolimodio@gmail.com">matiascolimodio@gmail.com</a>
       </p>
-    </div>
+    </footer>
   )
 }

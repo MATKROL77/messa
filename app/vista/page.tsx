@@ -7,6 +7,7 @@ import type { Plato } from '@/types'
 import { formatPrecio, formatPrecioCarta } from '@/lib/utils'
 import DishMedia from '@/components/menu/DishMedia'
 import MenuExperience from '@/components/menu/MenuExperience'
+import Footer from '@/components/Footer'
 
 const FILTERS = ['Sin TACC', 'Vegetariano', 'Vegano']
 
@@ -50,7 +51,9 @@ export default function VistaPage() {
         onToggleFilter={toggle}
         onClearFilters={() => setFiltros([])}
         onSelect={setActiveDish}
-      />
+      >
+        <Footer nombre={config.nombre} />
+      </MenuExperience>
 
       {activeDish && <div className="modal-backdrop dish-detail-backdrop" onClick={() => setActiveDish(null)}><article className={`dish-detail dish-detail--${activeDish.categoria_id}${activeDish.presentacion_media?.aspecto ? ` dish-detail--media-${activeDish.presentacion_media.aspecto}` : ''}`} role="dialog" aria-modal="true" aria-label={activeDish.nombre} onClick={event => event.stopPropagation()}>
         <div className="dish-detail__surface">

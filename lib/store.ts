@@ -2,8 +2,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRestaurante, CierreDiario, RolUsuario, PropinaConfig, Tema, LlamadoMozo, MetodoPago, Sucursal, Categoria, ConfigDelivery, Gasto, FidelidadConfig, RecompensaFidelidad, ReviewPlato } from '@/types'
-import { getMesasMock, insumosIniciales, platosIniciales, configInicial, tagsIniciales, propinaConfigInicial, temaInicial, sucursalesIniciales, categoriasIniciales, deliveryIntegracionesIniciales, fidelidadConfigInicial, recompensasFidelidadIniciales } from '@/lib/data'
+import { getMesasMock, insumosIniciales, platosIniciales, configInicial, tagsIniciales, propinaConfigInicial, temaInicial, sucursalesIniciales, categoriasIniciales, deliveryIntegracionesIniciales, fidelidadConfigInicial, recompensasFidelidadIniciales, MESSA_DORADO, VERDE_HEREDADO } from '@/lib/data'
 import { generarId, obtenerDispositivoId } from '@/lib/utils'
+import { normalizarTagRfid } from '@/lib/mesa-codigo'
+import { withBasePath } from '@/lib/base-path'
 
 const MESSA_STORAGE_KEY = 'messa-store-v8'
 const LEGACY_STORAGE_KEY = 'menuflow-store-v7'
@@ -81,6 +83,28 @@ const sincronizarInsumosMessa = (insumos: Insumo[]) => [
   ...insumos,
   ...insumosIniciales.filter(inicial => !insumos.some(actual => actual.id === inicial.id)),
 ]
+/**
+ * Lleva un tema persistido a la identidad actual: nombre de marca viejo y el
+ * verde que se usaba como color primario antes de que el dorado pasara a ser
+ * el color por defecto de MESSA. Si el dueño eligió cualquier otro color, se
+ * respeta tal cual.
+ */
+const migrarTema = (tema: Tema): Tema => ({
+  ...tema,
+  nombre_marca: tema.nombre_marca === 'MenuFlow' ? 'MESSA' : tema.nombre_marca,
+  color_primario: tema.color_primario.toLowerCase() === VERDE_HEREDADO.toLowerCase() ? MESSA_DORADO : tema.color_primario,
+})
+
+/**
+ * Normaliza la versión de código de cada mesa. Las instalaciones anteriores a
+ * los QR con código arrancan en la versión 0, que es la que el servidor deriva
+ * por defecto.
+ */
+const sincronizarCodigosDeMesa = (mesas: Mesa[]) => {
+  if (mesas.every(mesa => typeof mesa.codigo_version === 'number')) return mesas
+  return mesas.map(mesa => typeof mesa.codigo_version === 'number' ? mesa : { ...mesa, codigo_version: 0 })
+}
+
 const sincronizarCategoriasMessa = (categorias: Categoria[]) => [
   ...categorias,
   ...categoriasIniciales.filter(categoria => CATEGORIAS_MESSA_NUEVAS.has(categoria.id) && !categorias.some(actual => actual.id === categoria.id)),
@@ -95,6 +119,23 @@ export interface Reserva {
 interface Notificacion {
   id: string; tipo: 'info' | 'success' | 'warning' | 'error'; mensaje: string
   mesa_numero?: number; timestamp: string; leida: boolean
+}
+
+/**
+ * Cada aporte a una cuenta compartida. Antes, elegir "solo lo mío" cobraba la
+ * parte de una persona pero cerraba la mesa entera como pagada; ahora los
+ * aportes se acumulan y la mesa recién se da por saldada cuando la suma cubre
+ * el total.
+ */
+export interface PagoParcial {
+  id: string
+  mesa_id: string
+  monto: number
+  propina: number
+  metodo: MetodoPago
+  dispositivo_id: string
+  cliente_email: string
+  created_at: string
 }
 
 // La autenticación real vive ahora en /api/auth/* (server-side, bcrypt +
@@ -133,6 +174,7 @@ interface AppStore {
   puntosClientes: Record<string, number>
   resenasEnviadas: Record<string, boolean>
   ultimaCuentaPagada: Record<string, string[]>
+  pagosParciales: Record<string, PagoParcial[]>
   permisosAdmin: Record<RolUsuario, PermisoAdmin[]>
   permisosVersion: number
 
@@ -151,6 +193,8 @@ interface AppStore {
 
   confirmarPedido: (panera?: string | null) => Pedido | null
   marcarComoPagado: (mesaId: string, metodoPago: MetodoPago, propina: number, clienteEmail: string) => void
+  registrarPagoParcial: (mesaId: string, monto: number, propina: number, metodoPago: MetodoPago, clienteEmail: string) => { saldado: boolean; restante: number }
+  saldoPendienteMesa: (mesaId: string) => { total: number; cubierto: number; restante: number }
   prepararPagoManual: (mesaId: string, propina: number, clienteEmail: string) => void
   marcarPagoManualStaff: (mesaId: string, metodoPago: MetodoPago) => void
   confirmarTransferenciaStaff: (pedidoId: string) => void
@@ -162,6 +206,13 @@ interface AppStore {
   cancelarPedido: (pedidoId: string) => void
   transferirMesa: (origenId: string, destinoId: string) => { ok: boolean; error?: string }
   actualizarNotaMesa: (mesaId: string, nota: string) => void
+
+  // Acceso por QR / RFID
+  regenerarCodigoMesa: (mesaId: string) => void
+  regenerarCodigosSucursal: (sucursalId: string) => number
+  asignarRfidMesa: (mesaId: string, tag: string) => { ok: boolean; error?: string }
+  buscarMesaPorRfid: (tag: string) => Mesa | null
+  aplicarCodigosDelServidor: (codigos: Record<string, string>) => void
 
   decrementarInsumos: (items: ItemPedido[], sucursalId: string) => void
   actualizarInsumo: (insumoId: string, cantidad: number) => void
@@ -269,16 +320,18 @@ export const useStore = create<AppStore>()(
       puntosClientes: {},
       resenasEnviadas: {},
       ultimaCuentaPagada: {},
+      pagosParciales: {},
       permisosAdmin: PERMISOS_ADMIN_DEFAULT,
       permisosVersion: 1,
 
         initStore: () => {
           set(state => ({
             dispositivoId: obtenerDispositivoId(),
-            tema: state.tema.nombre_marca === 'MenuFlow' ? { ...state.tema, nombre_marca: 'MESSA' } : state.tema,
+            tema: migrarTema(state.tema),
             platos: sincronizarPlatosMessa(state.platos),
             insumos: sincronizarInsumosMessa(state.insumos),
             categoriasDisponibles: sincronizarCategoriasMessa(state.categoriasDisponibles),
+            mesas: sincronizarCodigosDeMesa(state.mesas),
             permisosAdmin: state.permisosVersion < 2
               ? { ...state.permisosAdmin, admin: PERMISOS_ADMIN_DEFAULT.admin }
               : state.permisosAdmin,
@@ -304,7 +357,7 @@ export const useStore = create<AppStore>()(
             dispositivoId: devId,
             esStaff: false,
             sesion: { mesa_id: 'vista', mesa_numero: 0, dispositivo_id: devId, modo: 'curioso' },
-            tema: state.tema.nombre_marca === 'MenuFlow' ? { ...state.tema, nombre_marca: 'MESSA' } : state.tema,
+            tema: migrarTema(state.tema),
             platos: sincronizarPlatosMessa(state.platos),
             categoriasDisponibles: sincronizarCategoriasMessa(state.categoriasDisponibles),
           }))
@@ -384,14 +437,62 @@ export const useStore = create<AppStore>()(
           return p
         })
         const updatedMesas = get().mesas.map(m => m.id === mesaId ? { ...m, estado: 'pagada' as MesaEstado, updated_at: new Date().toISOString() } : m)
+        const huboAportesParciales = (get().pagosParciales[mesaId] || []).length > 0
         set(s => ({ pedidos: updatedPedidos, mesas: updatedMesas, ultimaCuentaPagada: pedidosCobrados.length ? { ...s.ultimaCuentaPagada, [mesaId]: pedidosCobrados } : s.ultimaCuentaPagada }))
-        if (clienteEmail && get().fidelidadConfig.habilitado) {
+        // Si la cuenta se pagó en partes, cada aporte ya sumó sus propios
+        // puntos; volver a otorgarlos sobre el total los duplicaría.
+        if (clienteEmail && !huboAportesParciales && get().fidelidadConfig.habilitado) {
           const puntos = Math.floor((totalCobrado / 1000) * get().fidelidadConfig.puntos_por_1000_gastado)
           if (puntos > 0) get().otorgarPuntos(clienteEmail, puntos)
         }
         const numero = get().mesas.find(m => m.id === mesaId)?.numero
         if (metodoPago === 'transferencia') get().agregarNotificacion('warning', 'Transferencia recibida — verificar acreditación', numero)
         else get().agregarNotificacion('success', `Pago confirmado (${metodoPago}) — mesa lista para liberar`, numero)
+      },
+
+      saldoPendienteMesa: (mesaId) => {
+        const total = get().pedidos
+          .filter(p => p.mesa_id === mesaId && p.estado !== 'cancelado' && p.estado !== 'pagado')
+          .reduce((acumulado, pedido) => acumulado + pedido.total, 0)
+        const cubierto = (get().pagosParciales[mesaId] || []).reduce((acumulado, pago) => acumulado + pago.monto, 0)
+        return { total, cubierto, restante: Math.max(0, total - cubierto) }
+      },
+
+      registrarPagoParcial: (mesaId, monto, propina, metodoPago, clienteEmail) => {
+        const pago: PagoParcial = {
+          id: generarId(),
+          mesa_id: mesaId,
+          monto,
+          propina,
+          metodo: metodoPago,
+          dispositivo_id: get().dispositivoId,
+          cliente_email: clienteEmail.trim().toLowerCase(),
+          created_at: new Date().toISOString(),
+        }
+        set(s => ({ pagosParciales: { ...s.pagosParciales, [mesaId]: [...(s.pagosParciales[mesaId] || []), pago] } }))
+
+        // Los puntos se otorgan aporte por aporte, así cada comensal suma por lo
+        // que realmente pagó. `marcarComoPagado` lo detecta y no vuelve a
+        // sumarlos al cerrar la cuenta.
+        if (clienteEmail && get().fidelidadConfig.habilitado) {
+          const puntos = Math.floor(((monto + propina) / 1000) * get().fidelidadConfig.puntos_por_1000_gastado)
+          if (puntos > 0) get().otorgarPuntos(clienteEmail, puntos)
+        }
+
+        const numero = get().mesas.find(m => m.id === mesaId)?.numero
+        const { total, cubierto } = get().saldoPendienteMesa(mesaId)
+        // Un peso de tolerancia: los redondeos de "partes iguales" no deberían
+        // dejar la mesa abierta por diferencias de centavos.
+        const restante = Math.max(0, total - cubierto)
+
+        if (restante <= 1) {
+          get().marcarComoPagado(mesaId, metodoPago, propina, clienteEmail)
+          return { saldado: true, restante: 0 }
+        }
+
+        get().actualizarMesa(mesaId, 'pagando')
+        get().agregarNotificacion('info', `Aporte de ${Math.round(monto).toLocaleString('es-AR')} recibido — faltan ${Math.round(restante).toLocaleString('es-AR')}`, numero)
+        return { saldado: false, restante }
       },
 
       prepararPagoManual: (mesaId, propina, clienteEmail) => {
@@ -456,6 +557,9 @@ export const useStore = create<AppStore>()(
         set(s => ({
           mesas: s.mesas.map(m => m.id === mesaId ? { ...m, estado: 'libre' as MesaEstado, dispositivos: [], nota_staff: '', updated_at: new Date().toISOString() } : m),
           paneraPromptShown: { ...s.paneraPromptShown, [mesaId]: false },
+          // La próxima mesa arranca con la cuenta en cero, sin arrastrar los
+          // aportes parciales del grupo anterior.
+          pagosParciales: { ...s.pagosParciales, [mesaId]: [] },
         }))
         get().agregarNotificacion('info', `Mesa liberada por el personal`, numero)
       },
@@ -494,6 +598,54 @@ export const useStore = create<AppStore>()(
       },
 
       actualizarNotaMesa: (mesaId, nota) => set(s => ({ mesas: s.mesas.map(m => m.id === mesaId ? { ...m, nota_staff: nota } : m) })),
+
+      // ── ACCESO POR QR / RFID ──
+      // El código de cada mesa lo deriva el servidor a partir de su id y de
+      // `codigo_version` (ver lib/mesa-codigo-server.ts). Acá sólo se guarda la
+      // versión vigente y una copia del código para poder dibujar el QR y la
+      // hoja de impresión sin volver a pedirlo.
+      regenerarCodigoMesa: (mesaId) => {
+        set(s => ({
+          mesas: s.mesas.map(m => m.id === mesaId
+            ? { ...m, codigo_version: (m.codigo_version || 0) + 1, codigo_acceso: undefined, updated_at: new Date().toISOString() }
+            : m),
+        }))
+        const numero = get().mesas.find(m => m.id === mesaId)?.numero
+        get().agregarNotificacion('warning', 'Código de mesa regenerado — hay que reimprimir su QR', numero)
+      },
+
+      regenerarCodigosSucursal: (sucursalId) => {
+        const alcanzadas = get().mesas.filter(m => m.sucursal_id === sucursalId)
+        set(s => ({
+          mesas: s.mesas.map(m => m.sucursal_id === sucursalId
+            ? { ...m, codigo_version: (m.codigo_version || 0) + 1, codigo_acceso: undefined, updated_at: new Date().toISOString() }
+            : m),
+        }))
+        get().agregarNotificacion('warning', `${alcanzadas.length} códigos regenerados — reimprimí todos los QR de la sucursal`)
+        return alcanzadas.length
+      },
+
+      asignarRfidMesa: (mesaId, tag) => {
+        const limpio = normalizarTagRfid(tag)
+        if (limpio && limpio.length < 4) return { ok: false, error: 'El identificador del tag es demasiado corto' }
+        const ocupado = get().mesas.find(m => m.id !== mesaId && m.rfid_tag && m.rfid_tag === limpio)
+        if (ocupado) return { ok: false, error: `Ese tag ya está vinculado a la Mesa ${ocupado.numero}` }
+        set(s => ({ mesas: s.mesas.map(m => m.id === mesaId ? { ...m, rfid_tag: limpio || undefined, updated_at: new Date().toISOString() } : m) }))
+        return { ok: true }
+      },
+
+      buscarMesaPorRfid: (tag) => {
+        const limpio = normalizarTagRfid(tag)
+        return limpio ? get().mesas.find(m => m.rfid_tag === limpio) || null : null
+      },
+
+      aplicarCodigosDelServidor: (codigos) => {
+        set(s => ({
+          mesas: s.mesas.map(m => codigos[m.id] && codigos[m.id] !== m.codigo_acceso
+            ? { ...m, codigo_acceso: codigos[m.id] }
+            : m),
+        }))
+      },
 
       decrementarInsumos: (items, sucursalId) => {
         const { insumos } = get()
@@ -634,7 +786,7 @@ export const useStore = create<AppStore>()(
         const { mesas, sucursalActualId } = get()
         const mesasSucursal = mesas.filter(m => m.sucursal_id === sucursalActualId)
         const siguienteNumero = Math.max(0, ...mesasSucursal.map(m => m.numero)) + 1
-        const nueva: Mesa = { id: 'm' + generarId(), numero: siguienteNumero, estado: 'libre', dispositivos: [], pos_x: 50, pos_y: 50, forma, capacidad, sucursal_id: sucursalActualId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+        const nueva: Mesa = { id: 'm' + generarId(), numero: siguienteNumero, estado: 'libre', dispositivos: [], pos_x: 50, pos_y: 50, forma, capacidad, sucursal_id: sucursalActualId, codigo_version: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
         set(s => ({ mesas: [...s.mesas, nueva] }))
       },
 
@@ -693,7 +845,7 @@ export const useStore = create<AppStore>()(
       setSesionAdmin: (s) => set({ sesionAdmin: s }),
 
       logoutAdmin: async () => {
-        try { await fetch('/api/auth/logout', { method: 'POST' }) } catch { /* red caída: igual limpiamos el estado local */ }
+        try { await fetch(withBasePath('/api/auth/logout'), { method: 'POST' }) } catch { /* red caída: igual limpiamos el estado local */ }
         set({ sesionAdmin: null })
       },
       actualizarPermisoRol: (rol, permiso, habilitado) => {
@@ -737,9 +889,12 @@ export const useStore = create<AppStore>()(
       actualizarFidelidadConfig: (cfg) => set(s => ({ fidelidadConfig: { ...s.fidelidadConfig, ...cfg } })),
       agregarRecompensa: (r) => { const rec: RecompensaFidelidad = { ...r, id: generarId() }; set(s => ({ recompensasFidelidad: [...s.recompensasFidelidad, rec] })) },
       eliminarRecompensa: (id) => set(s => ({ recompensasFidelidad: s.recompensasFidelidad.filter(r => r.id !== id) })),
+      // Acepta valores negativos para poder canjear una recompensa desde el
+      // panel, pero el saldo nunca queda por debajo de cero.
       otorgarPuntos: (email, puntos) => {
         const key = email.trim().toLowerCase()
-        set(s => ({ puntosClientes: { ...s.puntosClientes, [key]: (s.puntosClientes[key] || 0) + puntos } }))
+        if (!key) return
+        set(s => ({ puntosClientes: { ...s.puntosClientes, [key]: Math.max(0, (s.puntosClientes[key] || 0) + puntos) } }))
       },
 
       // ── RESEÑAS ──
@@ -770,6 +925,6 @@ export const useStore = create<AppStore>()(
         return { ok: true }
       },
     }),
-    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
+    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, pagosParciales: s.pagosParciales, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
   )
 )

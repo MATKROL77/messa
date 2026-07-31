@@ -44,6 +44,107 @@ Reiniciá el servidor y ya podés entrar a `/login` con esas credenciales reales
 
 ---
 
+## 🔐 Acceso a la mesa por QR, código y RFID/NFC
+
+Cada mesa tiene un **código alfanumérico** (`XXXX-XXXX`) que viaja dentro de su
+QR. Sin ese código la mesa no abre: escribir `/mesa/m2` a mano ahora muestra una
+pantalla de acceso, y `?staff=true` exige sesión real del panel.
+
+El código lo **deriva el servidor** con HMAC-SHA256 a partir del id de la mesa y
+una clave que sólo vive en variables de entorno, así que el navegador no puede
+calcular el de la mesa de al lado.
+
+Todo se administra en **Administración → Mesas y códigos QR**: hoja imprimible
+con un QR por mesa, descarga PNG individual, vinculación de tarjetas RFID/NFC,
+alta y baja de mesas, y regeneración de códigos.
+
+Detalle completo y límites conocidos: [docs/qr-mesas-y-rfid.md](./docs/qr-mesas-y-rfid.md).
+
+---
+
+## 🌐 Dónde se publica
+
+| | Vista previa (GitHub Pages) | Despliegue completo (Cloudflare) |
+|---|---|---|
+| Carta, modo vista, mesa, panel | ✅ | ✅ |
+| Login real con bcrypt | ❌ (entra en modo demo, con aviso) | ✅ |
+| Cobro con Mercado Pago | ❌ | ✅ |
+| Códigos de mesa firmados en el servidor | ❌ (semilla pública de demo) | ✅ |
+
+- **Vista previa**: se publica sola en cada push con
+  `.github/workflows/pages.yml`, pero **antes hay que activar Pages una vez a
+  mano**: *Settings → Pages → Build and deployment → Source: **GitHub Actions***.
+  El token de Actions no tiene permiso para crear el sitio por su cuenta, así
+  que ese click sólo lo puede dar quien administra el repositorio. Una vez
+  hecho, el sitio queda en `https://matkrol77.github.io/messa/` y se actualiza
+  con cada push (si el último intento falló, volvé a ejecutarlo desde la pestaña
+  Actions).
+- **Despliegue completo**: se hace solo desde Cloudflare Workers Builds, que ya
+  está conectado a este repositorio. Ver la sección siguiente.
+
+### Cloudflare Workers Builds — ajustes del panel
+
+El proyecto de Cloudflare se llama **`messa`**, y `wrangler.jsonc` ya declara
+`"name": "messa"` para que coincida. Tres cosas tienen que estar bien o el
+despliegue falla:
+
+**1. Qué Worker está conectado a este repositorio.** Si la cuenta todavía
+tiene conectado un Worker viejo (por ejemplo uno llamado `menuflow-app`, de
+antes de que el proyecto se llamara MESSA) apuntando a este mismo repo, Workers
+Builds va a rechazar cada build en el acto (falla en 0 segundos, sin llegar a
+compilar) porque el nombre no coincide. Hay que desconectar ese Worker viejo
+del repositorio y conectar `messa` en *Workers & Pages → messa → Settings →
+Build → Source*, o renombrarlo si es el mismo proyecto.
+
+**2. Los comandos de build.** En *Workers & Pages → messa → Settings →
+Build*:
+
+| Campo | Valor |
+|---|---|
+| Build command | `pnpm cf:build` |
+| Deploy command | `npx opennextjs-cloudflare deploy` |
+
+El comando por defecto (`npx wrangler deploy`) **no** sirve: no genera
+`.open-next/worker.js` y el despliegue falla por archivo inexistente.
+
+**3. Las variables de entorno.** En *Settings → Variables and Secrets*, como
+tipo **Secret** (no como texto plano):
+
+| Variable | Para qué |
+|---|---|
+| `SESSION_SECRET` | Firma las sesiones y deriva los códigos QR de las mesas. Sin esto no se puede iniciar sesión ni generar QR. |
+| `CREATOR_EMAIL` | Tu email de acceso. |
+| `CREATOR_NOMBRE` | Nombre que se muestra en el panel. |
+| `CREATOR_PASSWORD_HASH` | El hash bcrypt de tu contraseña (`node scripts/generar-hash.js "tu contraseña"`). **Sin escapar los `$`** — el escapado es sólo para archivos `.env`. |
+
+Opcionales: `ADMIN_*`, `EDITOR_*`, `STAFF_*` para las otras cuentas, y
+`MP_ACCESS_TOKEN` / `MP_WEBHOOK_SECRET` para cobrar de verdad con Mercado Pago.
+
+También podés desplegar a mano con `pnpm cf:deploy`, o con el workflow
+`.github/workflows/cloudflare.yml` cargando los secretos `CLOUDFLARE_API_TOKEN`
+y `CLOUDFLARE_ACCOUNT_ID` en GitHub.
+
+---
+
+## ⚠️ Los hash de bcrypt en el archivo `.env`
+
+Un hash de bcrypt empieza con `$2b$12$…`, y Next.js **expande variables** dentro
+de los archivos `.env`: `$2b` y `$12` se reemplazan por vacío y el hash queda
+roto. El login falla con "Email o contraseña incorrectos" aunque la contraseña
+sea la correcta.
+
+Escapá cada `$` con una barra invertida al pegarlo en `.env`:
+
+```
+CREATOR_PASSWORD_HASH=\$2b\$12\$K1x...
+```
+
+`node scripts/generar-hash.js "tu contraseña"` ya imprime las dos versiones: la
+escapada para `.env` y la original para `wrangler secret put`, donde no hace
+falta escapar nada.
+
+---
+
 ## ☁️ Deploy en Cloudflare
 
 ```bash
@@ -127,9 +228,9 @@ Cambiar una contraseña: `node scripts/generar-hash.js "nueva"` → actualizar l
 
 ## 🗺️ Mapa de páginas
 
-**Comensales:** `/` · `/vista` · `/mesa/[id]`
+**Comensales:** `/` · `/vista` · `/m/[codigo]` (destino del QR) · `/rfid/[tag]` · `/mesa/[id]` (requiere código)
 **Staff (sin login):** `/dashboard` · `/cocina` · `/encargos` · `/reservas`
-**Admin (login en `/login`):** `/admin` · `/admin/carta` · `/admin/stock` · `/admin/mesas` · `/admin/sucursales` · `/admin/pagos` · `/admin/finanzas` · `/admin/cierre` · `/admin/integraciones` · `/admin/fidelidad` (creador) · `/admin/usuarios` · `/admin/tema` (creador)
+**Admin (login en `/login`):** `/admin` · `/admin/carta` · `/admin/mesas` (QR y RFID) · `/admin/stock` · `/admin/mesas` · `/admin/sucursales` · `/admin/pagos` · `/admin/finanzas` · `/admin/cierre` · `/admin/integraciones` · `/admin/fidelidad` (creador) · `/admin/usuarios` · `/admin/tema` (creador)
 
 ## 🛠 Stack técnico
 

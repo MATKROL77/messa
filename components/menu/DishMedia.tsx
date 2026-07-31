@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import type { Plato } from '@/types'
+import { withBasePath } from '@/lib/base-path'
 
 type Variant = 'card' | 'hero' | 'thumbnail'
 
@@ -67,8 +68,11 @@ export default function DishMedia({ plato, variant = 'card', className, style }:
   return (
     <div className={`dish-media dish-media--${variant} ${aspect ? `dish-media--shape-${aspect}` : ''} ${source.esRecorte ? 'dish-media--cutout' : 'dish-media--fallback-asset'} ${className || ''}`} style={{ background: source.esRecorte ? 'transparent' : (plato.color_fondo_media || 'var(--media-fallback)'), ...mediaStyle }}>
       {source.src ? (
+        // `withBasePath` es necesario porque estas fotos se sirven con <img> y
+        // no pasan por next/image: sin el prefijo, un despliegue bajo un
+        // subdirectorio las pediría a la raíz del dominio y darían 404.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={source.src} alt={plato.nombre} loading={variant === 'hero' ? 'eager' : 'lazy'} fetchPriority={variant === 'hero' ? 'high' : 'auto'} decoding="async" style={{ objectPosition: position }} />
+        <img src={withBasePath(source.src)} alt={plato.nombre} loading={variant === 'hero' ? 'eager' : 'lazy'} fetchPriority={variant === 'hero' ? 'high' : 'auto'} decoding="async" style={{ objectPosition: position }} />
       ) : <div className="dish-media__fallback" aria-label={`Sin imagen de ${plato.nombre}`}>M</div>}
     </div>
   )

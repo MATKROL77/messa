@@ -1,0 +1,55 @@
+name: Despliegue completo en Cloudflare
+
+# Publica MESSA con TODO funcionando: login con bcrypt, cobro real con Mercado
+# Pago y códigos de mesa firmados en el servidor.
+#
+# Para usarlo alcanza con cargar UN secreto del repositorio en
+# Settings → Secrets and variables → Actions → New repository secret:
+#
+#   CLOUDFLARE_API_TOKEN   token con permiso "Edit Cloudflare Workers"
+#
+# El id de cuenta ya viene por defecto abajo (no es un dato secreto). Si querés
+# usar otra cuenta, cargalo como secreto CLOUDFLARE_ACCOUNT_ID y tiene prioridad.
+#
+# Este workflow es una alternativa a Workers Builds (la conexión directa de
+# Cloudflare con GitHub). Sirve sobre todo para diagnosticar: sus registros se
+# leen desde la pestaña Actions, mientras que los de Workers Builds sólo se ven
+# dentro del panel de Cloudflare.
+#
+# Las variables del Worker (SESSION_SECRET, CREATOR_PASSWORD_HASH, etc.) se
+# cargan aparte, en el panel de Cloudflare. Ver LEEME.md.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, claude/messa-review-polish-wmd693]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Sin el token no hay nada que desplegar: se salta en vez de fallar en rojo.
+    if: github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ENABLED == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verificar tipos y estilo
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm lint
+
+      - name: Construir y desplegar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || 'ea060ae701e304a6d55624287327abdd' }}
+        run: pnpm cf:deploy

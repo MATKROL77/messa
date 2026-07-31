@@ -12,9 +12,11 @@ export default function FidelidadPage() {
     recompensasFidelidad,
     agregarRecompensa,
     eliminarRecompensa,
+    otorgarPuntos,
     puntosClientes,
   } = useStore()
   const [form, setForm] = useState(fidelidadConfig)
+  const [ajuste, setAjuste] = useState({ email: '', puntos: 100 })
   const [creandoRecompensa, setCreandoRecompensa] = useState(false)
   const [nuevaRecompensa, setNuevaRecompensa] = useState({ nombre: '', descripcion: '', puntos_requeridos: 100, activa: true })
   const [toast, setToast] = useState('')
@@ -85,6 +87,24 @@ export default function FidelidadPage() {
           ) : (
             <AdminEmpty Icon={Award} title="Todavía no hay saldos" description="Los clientes aparecen cuando pagan con email y acumulan sus primeros puntos." />
           )}
+
+          {/* Ajuste manual: hace falta para canjear una recompensa (restando
+              puntos) o compensar a un cliente sin tener que tocar la base. */}
+          <div className="messa-loyalty-adjust">
+            <p className="messa-kicker">Ajuste manual de saldo</p>
+            <div className="messa-form-grid">
+              <label><span>Email del cliente</span><input type="email" value={ajuste.email} onChange={event => setAjuste(current => ({ ...current, email: event.target.value }))} placeholder="cliente@email.com" autoComplete="off" /></label>
+              <label><span>Puntos (negativo para canjear)</span><input type="number" value={ajuste.puntos} onChange={event => setAjuste(current => ({ ...current, puntos: Number.parseInt(event.target.value) || 0 }))} /></label>
+            </div>
+            <AdminButton tone="neutral" icon={Coins} onClick={() => {
+              const email = ajuste.email.trim().toLowerCase()
+              if (!email.includes('@')) { showToast('Ingresá un email válido'); return }
+              if (!ajuste.puntos) { showToast('Indicá cuántos puntos sumar o restar'); return }
+              otorgarPuntos(email, ajuste.puntos)
+              showToast(`${ajuste.puntos > 0 ? '+' : ''}${ajuste.puntos} puntos para ${email}`)
+              setAjuste({ email: '', puntos: 100 })
+            }}>Aplicar ajuste</AdminButton>
+          </div>
         </AdminPanel>
       </div>
 

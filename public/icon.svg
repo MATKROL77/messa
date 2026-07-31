@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MESSA">
+  <rect width="128" height="128" rx="30" fill="#171612"/>
+  <path d="M64 22 78 62" stroke="#C69A3F" stroke-width="9" stroke-linecap="round"/>
+  <text x="64" y="92" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing="2" fill="#F7F2E8" text-anchor="middle">M</text>
+</svg>

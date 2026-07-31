@@ -7,6 +7,8 @@ interface PreferenciaRequest {
   mesa_numero?: number
   propina?: number
   email?: string
+  /** Importe de la parte pagada cuando la cuenta se dividió (0 = paga todo). */
+  parcial?: number
 }
 
 interface PreferenciaResponse {
@@ -22,7 +24,7 @@ interface PreferenciaResponse {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as PreferenciaRequest
-    const { monto, descripcion, mesa_id, mesa_numero, propina, email } = body
+    const { monto, descripcion, mesa_id, mesa_numero, propina, email, parcial } = body
 
     const accessToken = process.env.MP_ACCESS_TOKEN
     if (!accessToken) {
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     // Pago los conserva y les agrega los suyos (payment_id, status, etc.) al
     // redirigir de vuelta, así el cliente puede recuperar ese contexto sin
     // depender de estado local que se pierde al salir de la app.
-    const qs = new URLSearchParams({ propina: String(propina || 0), email: email || '' }).toString()
+    const qs = new URLSearchParams({ propina: String(propina || 0), email: email || '', parcial: String(parcial || 0) }).toString()
     const backUrl = (status: string) => `${req.nextUrl.origin}/mesa/${mesa_id}?mp_status=${status}&${qs}`
 
     const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
