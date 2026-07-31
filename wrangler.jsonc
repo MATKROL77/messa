@@ -1,12 +1,14 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   // Tiene que coincidir EXACTAMENTE con el nombre del Worker en Cloudflare.
-  // El Worker conectado a este repositorio se llama "menuflow-app" (nombre
-  // anterior del proyecto): mientras acá decía "messa", Workers Builds
-  // rechazaba cada build en el acto, sin llegar a compilar.
-  // Si algún día renombrás el Worker en el panel de Cloudflare, actualizá
-  // también este valor.
-  "name": "menuflow-app",
+  // Este es el proyecto nuevo, "messa".
+  //
+  // Ojo: la cuenta todavía tiene conectado a este repositorio el Worker
+  // anterior, "menuflow-app". Mientras esa conexión siga viva, Workers Builds
+  // va a rechazar cada build en el acto (falla en 0 segundos) porque el nombre
+  // no le coincide. Hay que desconectar "menuflow-app" del repositorio, o
+  // conectar "messa" en su lugar. Ver LEEME.md.
+  "name": "messa",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],

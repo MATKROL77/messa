@@ -84,14 +84,19 @@ Detalle completo y límites conocidos: [docs/qr-mesas-y-rfid.md](./docs/qr-mesas
 
 ### Cloudflare Workers Builds — ajustes del panel
 
-El Worker conectado se llama **`menuflow-app`**. Tres cosas tienen que estar
-bien o el despliegue falla:
+El proyecto de Cloudflare se llama **`messa`**, y `wrangler.jsonc` ya declara
+`"name": "messa"` para que coincida. Tres cosas tienen que estar bien o el
+despliegue falla:
 
-**1. El nombre del Worker.** `wrangler.jsonc` debe declarar exactamente
-`"name": "menuflow-app"`. Si no coincide, Workers Builds rechaza el build en el
-acto (falla en 0 segundos, sin llegar a compilar).
+**1. Qué Worker está conectado a este repositorio.** Si la cuenta todavía
+tiene conectado un Worker viejo (por ejemplo uno llamado `menuflow-app`, de
+antes de que el proyecto se llamara MESSA) apuntando a este mismo repo, Workers
+Builds va a rechazar cada build en el acto (falla en 0 segundos, sin llegar a
+compilar) porque el nombre no coincide. Hay que desconectar ese Worker viejo
+del repositorio y conectar `messa` en *Workers & Pages → messa → Settings →
+Build → Source*, o renombrarlo si es el mismo proyecto.
 
-**2. Los comandos de build.** En *Workers & Pages → menuflow-app → Settings →
+**2. Los comandos de build.** En *Workers & Pages → messa → Settings →
 Build*:
 
 | Campo | Valor |
