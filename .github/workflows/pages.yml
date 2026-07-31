@@ -56,11 +56,13 @@ jobs:
       - name: Evitar que Jekyll ignore los archivos _next
         run: touch out/.nojekyll
 
+      # PASO MANUAL, UNA SOLA VEZ: hay que activar GitHub Pages en
+      # Settings → Pages → Build and deployment → Source: "GitHub Actions".
+      # El token de Actions no tiene permiso para crear el sitio por su cuenta
+      # (responde "Resource not accessible by integration"), así que ese click
+      # sólo lo puede hacer quien administra el repositorio. Después de eso,
+      # cada push publica solo.
       - uses: actions/configure-pages@v5
-        # Habilita GitHub Pages en el repositorio la primera vez, para no tener
-        # que activarlo a mano en Settings → Pages.
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:

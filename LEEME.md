@@ -72,8 +72,13 @@ Detalle completo y límites conocidos: [docs/qr-mesas-y-rfid.md](./docs/qr-mesas
 | Códigos de mesa firmados en el servidor | ❌ (semilla pública de demo) | ✅ |
 
 - **Vista previa**: se publica sola en cada push con
-  `.github/workflows/pages.yml`. Hay que habilitarla una vez en
-  *Settings → Pages → Source: GitHub Actions*.
+  `.github/workflows/pages.yml`, pero **antes hay que activar Pages una vez a
+  mano**: *Settings → Pages → Build and deployment → Source: **GitHub Actions***.
+  El token de Actions no tiene permiso para crear el sitio por su cuenta, así
+  que ese click sólo lo puede dar quien administra el repositorio. Una vez
+  hecho, el sitio queda en `https://matkrol77.github.io/messa/` y se actualiza
+  con cada push (si el último intento falló, volvé a ejecutarlo desde la pestaña
+  Actions).
 - **Despliegue completo**: `pnpm cf:deploy`, o el workflow
   `.github/workflows/cloudflare.yml` cargando los secretos
   `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
