@@ -16,7 +16,6 @@ import {
   Trash2,
   UsersRound,
 } from 'lucide-react'
-import AdminOperationShell from '@/components/admin-operation-shell'
 import {
   AdminButton,
   AdminEmpty,
@@ -189,9 +188,12 @@ export default function MesasQrPage() {
     if (resultado.ok) setEditando(null)
   }
 
+  // Esta página vive dentro de `app/admin/`, así que Next ya la envuelve con
+  // `app/admin/layout.tsx`. No lleva `AdminOperationShell` — eso es sólo para
+  // las vistas operativas que están fuera de esa carpeta (/dashboard, /cocina,
+  // /reservas); usarlo acá montaba el panel entero por duplicado.
   return (
-    <AdminOperationShell>
-      <AdminWorkspace
+    <AdminWorkspace
         eyebrow="Acceso de comensales"
         title="Mesas y códigos QR"
         description={`Cada mesa de ${sucursal?.nombre || 'la sucursal'} tiene un código propio. Sin ese código, nadie puede abrir la mesa escribiendo la dirección a mano.`}
@@ -415,7 +417,6 @@ export default function MesasQrPage() {
             <p>Vas a necesitar reimprimir la hoja completa y regrabar las tarjetas NFC. Hacelo sólo si se filtraron los códigos.</p>
           </div>
         </AdminSheet>
-      </AdminWorkspace>
-    </AdminOperationShell>
+    </AdminWorkspace>
   )
 }
