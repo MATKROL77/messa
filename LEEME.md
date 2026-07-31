@@ -79,9 +79,45 @@ Detalle completo y límites conocidos: [docs/qr-mesas-y-rfid.md](./docs/qr-mesas
   hecho, el sitio queda en `https://matkrol77.github.io/messa/` y se actualiza
   con cada push (si el último intento falló, volvé a ejecutarlo desde la pestaña
   Actions).
-- **Despliegue completo**: `pnpm cf:deploy`, o el workflow
-  `.github/workflows/cloudflare.yml` cargando los secretos
-  `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+- **Despliegue completo**: se hace solo desde Cloudflare Workers Builds, que ya
+  está conectado a este repositorio. Ver la sección siguiente.
+
+### Cloudflare Workers Builds — ajustes del panel
+
+El Worker conectado se llama **`menuflow-app`**. Tres cosas tienen que estar
+bien o el despliegue falla:
+
+**1. El nombre del Worker.** `wrangler.jsonc` debe declarar exactamente
+`"name": "menuflow-app"`. Si no coincide, Workers Builds rechaza el build en el
+acto (falla en 0 segundos, sin llegar a compilar).
+
+**2. Los comandos de build.** En *Workers & Pages → menuflow-app → Settings →
+Build*:
+
+| Campo | Valor |
+|---|---|
+| Build command | `pnpm cf:build` |
+| Deploy command | `npx opennextjs-cloudflare deploy` |
+
+El comando por defecto (`npx wrangler deploy`) **no** sirve: no genera
+`.open-next/worker.js` y el despliegue falla por archivo inexistente.
+
+**3. Las variables de entorno.** En *Settings → Variables and Secrets*, como
+tipo **Secret** (no como texto plano):
+
+| Variable | Para qué |
+|---|---|
+| `SESSION_SECRET` | Firma las sesiones y deriva los códigos QR de las mesas. Sin esto no se puede iniciar sesión ni generar QR. |
+| `CREATOR_EMAIL` | Tu email de acceso. |
+| `CREATOR_NOMBRE` | Nombre que se muestra en el panel. |
+| `CREATOR_PASSWORD_HASH` | El hash bcrypt de tu contraseña (`node scripts/generar-hash.js "tu contraseña"`). **Sin escapar los `$`** — el escapado es sólo para archivos `.env`. |
+
+Opcionales: `ADMIN_*`, `EDITOR_*`, `STAFF_*` para las otras cuentas, y
+`MP_ACCESS_TOKEN` / `MP_WEBHOOK_SECRET` para cobrar de verdad con Mercado Pago.
+
+También podés desplegar a mano con `pnpm cf:deploy`, o con el workflow
+`.github/workflows/cloudflare.yml` cargando los secretos `CLOUDFLARE_API_TOKEN`
+y `CLOUDFLARE_ACCOUNT_ID` en GitHub.
 
 ---
 

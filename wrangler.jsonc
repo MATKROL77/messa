@@ -1,6 +1,12 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "messa",
+  // Tiene que coincidir EXACTAMENTE con el nombre del Worker en Cloudflare.
+  // El Worker conectado a este repositorio se llama "menuflow-app" (nombre
+  // anterior del proyecto): mientras acá decía "messa", Workers Builds
+  // rechazaba cada build en el acto, sin llegar a compilar.
+  // Si algún día renombrás el Worker en el panel de Cloudflare, actualizá
+  // también este valor.
+  "name": "menuflow-app",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],
