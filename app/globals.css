@@ -115,7 +115,7 @@ input, button, textarea, select { outline: none; font-family: inherit; }
   --messa-muted: color-mix(in srgb, var(--messa-ink) 58%, transparent);
   --messa-line: color-mix(in srgb, var(--messa-ink) 9%, transparent);
   --messa-surface: rgba(255, 255, 255, .72);
-  --messa-accent: #356b53;
+  --messa-accent: #c69a3f;
   --messa-radius-xl: 32px;
   --messa-radius-lg: 24px;
   --messa-shadow: 0 18px 50px rgba(43, 38, 28, .11);
@@ -205,9 +205,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Immersive menu cards: the media has alpha; the card supplies the glass and depth. */
 .dish-grid { gap: 20px; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
-.dish-editorial-card { background: linear-gradient(145deg, rgba(255,255,255,.74), rgba(255,255,255,.38)); border: 1px solid rgba(255,255,255,.88); border-radius: 30px; box-shadow: 0 18px 42px rgba(67,54,34,.11), inset 0 1px 0 rgba(255,255,255,.86); display: flex; flex-direction: column; isolation: isolate; min-height: 350px; overflow: hidden; padding: 10px; position: relative; }.dish-editorial-card::before { background: radial-gradient(circle at 80% 6%, rgba(224,178,120,.26), transparent 36%), radial-gradient(circle at 10% 90%, rgba(83,136,112,.16), transparent 38%); content: ''; inset: 0; pointer-events: none; position: absolute; z-index: -2; }.dish-editorial-card__orb { background: rgba(255,255,255,.38); border: 1px solid rgba(255,255,255,.58); border-radius: 50%; filter: blur(.1px); height: 210px; pointer-events: none; position: absolute; right: -58px; top: -88px; width: 210px; z-index: -1; }.dish-editorial-card:hover { box-shadow: 0 25px 56px rgba(67,54,34,.16), inset 0 1px 0 rgba(255,255,255,.9); transform: translateY(-5px); }.dish-editorial-card .dish-media--card { align-self: center; aspect-ratio: auto; background: transparent !important; height: 205px; min-height: 205px; overflow: visible; position: relative; width: 100%; z-index: 1; }.dish-editorial-card .dish-media--card img { filter: drop-shadow(0 18px 14px rgba(35,31,23,.22)); height: 100%; object-fit: contain; transform: scale(1.16); width: 100%; }.dish-editorial-card:hover .dish-media--card img { transform: scale(1.2) translateY(-3px); }.dish-editorial-card__body { background: rgba(255,255,255,.64); border: 1px solid rgba(255,255,255,.72); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255,255,255,.85); margin-top: auto; padding: 13px; position: relative; z-index: 2; }.dish-editorial-card h3 { font-size: 17px; margin: 9px 0 0; }.dish-editorial-card > .dish-editorial-card__body > p { margin: 7px 0 11px; }.dish-editorial-card__title-row .icon-button { background: var(--messa-ink); border-color: var(--messa-ink); color: white; flex: 0 0 38px; height: 38px; width: 38px; }.dish-editorial-card__title-row .icon-button:hover { background: var(--messa-accent); border-color: var(--messa-accent); }.dish-editorial-card__footer { border-top: 1px solid var(--messa-line); padding-top: 10px; }.dish-editorial-card--landscape { display: grid; flex: 0 0 min(88vw, 620px); grid-template-columns: minmax(0,1fr) minmax(210px,.94fr); min-height: 270px; overflow: hidden; padding: 12px; }.dish-category-rail { gap: 20px; padding-bottom: 30px; }.dish-category-rail .dish-editorial-card { flex: 0 0 min(88vw,620px); }.dish-editorial-card--landscape .dish-media--card { align-self: stretch; grid-column: 2; grid-row: 1; height: 100%; min-height: 0; }.dish-editorial-card--landscape .dish-media--card img { transform: scale(1.28); }.dish-editorial-card--landscape:hover .dish-media--card img { transform: scale(1.34) translateY(-3px); }.dish-editorial-card--landscape .dish-editorial-card__body { align-self: center; grid-column: 1; grid-row: 1; margin: 0; }.dish-editorial-card--landscape .dish-editorial-card__orb { height: 270px; right: 13%; top: -105px; width: 270px; }.dish-hero .dish-media img { object-fit: contain; transform: scale(1.02); }.dish-hero:hover .dish-media img { transform: scale(1.06); }
+.dish-editorial-card { background: linear-gradient(145deg, rgba(255,255,255,.74), rgba(255,255,255,.38)); border: 1px solid rgba(255,255,255,.88); border-radius: 30px; box-shadow: 0 18px 42px rgba(67,54,34,.11), inset 0 1px 0 rgba(255,255,255,.86); display: flex; flex-direction: column; isolation: isolate; min-height: 350px; overflow: hidden; padding: 10px; position: relative; }.dish-editorial-card::before { background: radial-gradient(circle at 80% 6%, rgba(224,178,120,.26), transparent 36%), radial-gradient(circle at 10% 90%, rgba(198,154,63,.13), transparent 38%); content: ''; inset: 0; pointer-events: none; position: absolute; z-index: -2; }.dish-editorial-card__orb { background: rgba(255,255,255,.38); border: 1px solid rgba(255,255,255,.58); border-radius: 50%; filter: blur(.1px); height: 210px; pointer-events: none; position: absolute; right: -58px; top: -88px; width: 210px; z-index: -1; }.dish-editorial-card:hover { box-shadow: 0 25px 56px rgba(67,54,34,.16), inset 0 1px 0 rgba(255,255,255,.9); transform: translateY(-5px); }.dish-editorial-card .dish-media--card { align-self: center; aspect-ratio: auto; background: transparent !important; height: 205px; min-height: 205px; overflow: visible; position: relative; width: 100%; z-index: 1; }.dish-editorial-card .dish-media--card img { filter: drop-shadow(0 18px 14px rgba(35,31,23,.22)); height: 100%; object-fit: contain; transform: scale(1.16); width: 100%; }.dish-editorial-card:hover .dish-media--card img { transform: scale(1.2) translateY(-3px); }.dish-editorial-card__body { background: rgba(255,255,255,.64); border: 1px solid rgba(255,255,255,.72); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255,255,255,.85); margin-top: auto; padding: 13px; position: relative; z-index: 2; }.dish-editorial-card h3 { font-size: 17px; margin: 9px 0 0; }.dish-editorial-card > .dish-editorial-card__body > p { margin: 7px 0 11px; }.dish-editorial-card__title-row .icon-button { background: var(--messa-ink); border-color: var(--messa-ink); color: white; flex: 0 0 38px; height: 38px; width: 38px; }.dish-editorial-card__title-row .icon-button:hover { background: var(--messa-accent); border-color: var(--messa-accent); }.dish-editorial-card__footer { border-top: 1px solid var(--messa-line); padding-top: 10px; }.dish-editorial-card--landscape { display: grid; flex: 0 0 min(88vw, 620px); grid-template-columns: minmax(0,1fr) minmax(210px,.94fr); min-height: 270px; overflow: hidden; padding: 12px; }.dish-category-rail { gap: 20px; padding-bottom: 30px; }.dish-category-rail .dish-editorial-card { flex: 0 0 min(88vw,620px); }.dish-editorial-card--landscape .dish-media--card { align-self: stretch; grid-column: 2; grid-row: 1; height: 100%; min-height: 0; }.dish-editorial-card--landscape .dish-media--card img { transform: scale(1.28); }.dish-editorial-card--landscape:hover .dish-media--card img { transform: scale(1.34) translateY(-3px); }.dish-editorial-card--landscape .dish-editorial-card__body { align-self: center; grid-column: 1; grid-row: 1; margin: 0; }.dish-editorial-card--landscape .dish-editorial-card__orb { height: 270px; right: 13%; top: -105px; width: 270px; }.dish-hero .dish-media img { object-fit: contain; transform: scale(1.02); }.dish-hero:hover .dish-media img { transform: scale(1.06); }
 
-.messa-login { align-items: center; background: radial-gradient(circle at 80% 12%, rgba(214,166,111,.22), transparent 30%), radial-gradient(circle at 8% 92%, rgba(53,107,83,.14), transparent 34%), var(--messa-canvas); color: var(--messa-ink); display: flex; flex-direction: column; justify-content: center; min-height: 100vh; padding: 30px 24px; }.messa-login > div:first-child { margin-bottom: 26px; text-align: center; }.messa-login__wordmark { font-family: inherit !important; font-size: 32px !important; font-weight: 800 !important; letter-spacing: .15em !important; margin: 0 0 7px !important; }.messa-login__wordmark + p { color: var(--messa-muted) !important; }.messa-login > div:first-child > p:first-child { align-items: center; background: var(--messa-ink); border-radius: 15px; color: white; display: inline-flex; font-size: 0 !important; height: 43px; justify-content: center; margin-bottom: 15px !important; width: 43px; }.messa-login > div:first-child > p:first-child::after { content: 'M'; font-size: 19px; font-weight: 800; }.messa-login__card { background: rgba(255,255,255,.76) !important; border: 1px solid rgba(255,255,255,.9) !important; border-radius: 28px !important; box-shadow: var(--messa-shadow); max-width: 450px; padding: 24px !important; width: 100%; }.messa-login__card .input-premium { background: rgba(255,255,255,.82); border-color: var(--messa-line); color: var(--messa-ink); }.messa-login__card p { color: var(--messa-muted) !important; }.messa-login__submit { background: var(--messa-ink); border: 0; border-radius: 999px; color: white; cursor: pointer; font-size: 14px; font-weight: 700; min-height: 50px; width: 100%; }.messa-login__submit:hover { background: var(--messa-accent); }.messa-login > a { color: var(--messa-muted) !important; font-size: 13px; margin-top: 19px; text-decoration: none; }
+.messa-login { align-items: center; background: radial-gradient(circle at 80% 12%, rgba(214,166,111,.22), transparent 30%), radial-gradient(circle at 8% 92%, rgba(198,154,63,.12), transparent 34%), var(--messa-canvas); color: var(--messa-ink); display: flex; flex-direction: column; justify-content: center; min-height: 100vh; padding: 30px 24px; }.messa-login > div:first-child { margin-bottom: 26px; text-align: center; }.messa-login__wordmark { font-family: inherit !important; font-size: 32px !important; font-weight: 800 !important; letter-spacing: .15em !important; margin: 0 0 7px !important; }.messa-login__wordmark + p { color: var(--messa-muted) !important; }.messa-login > div:first-child > p:first-child { align-items: center; background: var(--messa-ink); border-radius: 15px; color: white; display: inline-flex; font-size: 0 !important; height: 43px; justify-content: center; margin-bottom: 15px !important; width: 43px; }.messa-login > div:first-child > p:first-child::after { content: 'M'; font-size: 19px; font-weight: 800; }.messa-login__card { background: rgba(255,255,255,.76) !important; border: 1px solid rgba(255,255,255,.9) !important; border-radius: 28px !important; box-shadow: var(--messa-shadow); max-width: 450px; padding: 24px !important; width: 100%; }.messa-login__card .input-premium { background: rgba(255,255,255,.82); border-color: var(--messa-line); color: var(--messa-ink); }.messa-login__card p { color: var(--messa-muted) !important; }.messa-login__submit { background: var(--messa-ink); border: 0; border-radius: 999px; color: white; cursor: pointer; font-size: 14px; font-weight: 700; min-height: 50px; width: 100%; }.messa-login__submit:hover { background: var(--messa-accent); }.messa-login > a { color: var(--messa-muted) !important; font-size: 13px; margin-top: 19px; text-decoration: none; }
 .dish-editorial-card--beverage .dish-media--card { height: 220px; min-height: 220px; }.dish-editorial-card--beverage .dish-media--card img { filter: drop-shadow(0 16px 14px rgba(35,31,23,.18)); object-position: center bottom; transform: scale(.88); }.dish-editorial-card--beverage:hover .dish-media--card img { transform: scale(.93) translateY(-3px); }.dish-editorial-card--landscape.dish-editorial-card--beverage .dish-media--card img { transform: scale(.92); }.dish-editorial-card--landscape.dish-editorial-card--beverage:hover .dish-media--card img { transform: scale(.97) translateY(-3px); }
 @media (max-width: 560px) { .dish-grid { gap: 12px; grid-template-columns: repeat(2,minmax(0,1fr)); }.dish-editorial-card { border-radius: 22px; min-height: 278px; padding: 7px; }.dish-editorial-card .dish-media--card { height: 137px; min-height: 137px; }.dish-editorial-card .dish-media--card img { transform: scale(1.2); }.dish-editorial-card__body { border-radius: 16px; padding: 10px; }.dish-editorial-card h3 { font-size: 13px; }.dish-editorial-card__title-row .icon-button { flex-basis: 31px; height: 31px; width: 31px; }.dish-editorial-card > .dish-editorial-card__body > p { font-size: 10px; min-height: 29px; }.dish-editorial-card__footer strong { font-size: 12px; }.dish-editorial-card--landscape { flex-basis: 86vw; grid-template-columns: 1fr 1fr; min-height: 214px; }.dish-editorial-card--landscape .dish-editorial-card__body { padding: 11px; }.dish-editorial-card--landscape .dish-media--card img { transform: scale(1.42); }.dish-editorial-card--landscape .dish-editorial-card__footer span { display: inline-flex; }.dish-hero .dish-media img { transform: scale(1.2); } }
 
@@ -245,7 +245,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .dish-editorial-card__media-shadow { background: rgba(46, 38, 26, .23); border-radius: 50%; bottom: 11%; filter: blur(13px); height: 8%; left: 18%; position: absolute; transform: rotate(-4deg); width: 64%; z-index: -1; }
 .dish-editorial-card:hover .dish-editorial-card__media-layer .dish-media img { transform: translateY(-4px) scale(1.012); }
 .dish-editorial-card__surface {
-  background: radial-gradient(circle at 86% 7%, rgba(224,178,120,.28), transparent 28%), radial-gradient(circle at 9% 96%, rgba(83,136,112,.16), transparent 35%), linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,255,255,.46));
+  background: radial-gradient(circle at 86% 7%, rgba(224,178,120,.28), transparent 28%), radial-gradient(circle at 9% 96%, rgba(198,154,63,.13), transparent 35%), linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,255,255,.46));
   border: 1px solid rgba(255,255,255,.92);
   border-radius: 30px;
   box-shadow: 0 18px 42px rgba(67,54,34,.11), inset 0 1px 0 rgba(255,255,255,.92);
@@ -1620,7 +1620,7 @@ html[data-menu-theme="dark"] :is(.icon-button, .filter-button, .messa-public-the
   border-color: rgba(255,250,239,.12);
   color: var(--messa-ink);
 }
-html[data-menu-theme="dark"] .soft-badge { background: rgba(105,163,132,.13); }
+html[data-menu-theme="dark"] .soft-badge { background: rgba(198,154,63,.15); }
 html[data-menu-theme="dark"] .menu-dock { background: rgba(45,41,34,.76); border-color: rgba(255,250,239,.12); }
 html[data-menu-theme="dark"] .mesa-header { background: rgba(28,26,22,.84) !important; border-color: rgba(255,250,239,.1) !important; }
 html[data-menu-theme="dark"] .mesa-header button { background: rgba(255,250,239,.08) !important; border-color: rgba(255,250,239,.12) !important; color: #f7f2e8 !important; }
@@ -2260,15 +2260,16 @@ html:not([data-menu-theme="dark"]) {
   --menu-control-border: rgba(29,27,23,.12);
   --menu-control-ink: #1d1b17;
 }
-html[data-menu-theme="dark"] .dish-editorial-card__surface .dish-editorial-card__title-row .icon-button {
-  background: #10100e;
-  border-color: rgba(255,250,239,.15);
-  color: #fffaf0;
-}
+/* El "+" de agregar es la acción principal de cada tarjeta: va dorado y con
+   tinta oscura en los dos temas. Antes era casi negro sobre tarjeta negra en
+   oscuro, y casi blanco sobre tarjeta crema en claro: en ninguno de los dos
+   se leía como un botón. Fondo y tinta se declaran juntos a propósito. */
+html[data-menu-theme="dark"] .dish-editorial-card__surface .dish-editorial-card__title-row .icon-button,
 html:not([data-menu-theme="dark"]) .dish-editorial-card__surface .dish-editorial-card__title-row .icon-button {
-  background: rgba(255,255,255,.94);
-  border-color: rgba(29,27,23,.12);
-  color: #1d1b17;
+  background: linear-gradient(135deg, #efd88f, #c69a3f);
+  border-color: #dcbc6d;
+  box-shadow: 0 4px 12px rgba(158, 114, 27, .22);
+  color: #201b12;
 }
 
 .mesa-cart-item {
@@ -4062,3 +4063,271 @@ html[data-admin-theme="light"] .messa-team-borrar { background: rgba(178, 60, 48
   .messa-home__links { gap: 10px; }
   .messa-home__account-link { font-size: 11.5px; min-height: 40px; padding: 0 11px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PULIDO DE LA CARTA — corrige los defectos visuales reportados
+   sobre capturas reales del sitio en producción.
+   Va al final a propósito: pisa por orden a las reglas históricas
+   sin tener que reescribir bloques que siguen sirviendo.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 1. El plato quedaba tapado por su propia tarjeta ──
+   Una corrección anterior mandó `.dish-editorial-card__media-layer` a z-index 0
+   para que la foto no se montara sobre la barra superior. Eso resolvió aquello
+   pero dejó la superficie (z-index 1) pintando ENCIMA del plato: la mitad de
+   abajo de cada foto quedaba velada por el fondo semitransparente de la card.
+   La foto vuelve arriba; que no escape sobre la barra ya lo garantiza el
+   `isolation: isolate` de la tarjeta, que la encierra en su propio contexto. */
+.dish-editorial-card__media-layer { z-index: 3; }
+.dish-editorial-card__surface { z-index: 1; }
+.dish-editorial-card__tap-target { z-index: 4; }
+
+/* ── 2. Geometría de la tarjeta vertical ──
+   Antes el alto de la foto era un porcentaje del ancho de la tarjeta y el
+   espacio reservado para ella era un `clamp` independiente: los dos números no
+   se hablaban, así que sobraban ~50 px muertos entre el plato y el texto.
+   Ahora la foto mide en píxeles y el padding del texto se DERIVA de ella, así
+   el aire es siempre el mismo a cualquier ancho. */
+.dish-editorial-card--portrait {
+  --card-media: 132px;        /* diámetro de la foto */
+  --card-media-h: var(--card-media);
+  --card-float: 46px;         /* cuánto asoma por encima de la superficie */
+  --card-aire: 12px;          /* respiro entre la foto y el primer texto */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: var(--card-float);
+}
+.dish-editorial-card--portrait .dish-editorial-card__media-layer {
+  aspect-ratio: auto;
+  height: var(--card-media-h);
+  width: var(--card-media);
+}
+.dish-editorial-card--portrait .dish-editorial-card__surface {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: calc(var(--card-media-h) - var(--card-float) + var(--card-aire)) 13px 14px;
+}
+/* El precio se apoya abajo del todo: así dos tarjetas de la misma fila alinean
+   su línea de precio aunque un título ocupe una línea y el otro dos. */
+.dish-editorial-card--portrait .dish-editorial-card__footer { margin-top: auto; }
+/* Y las dos tarjetas de la fila miden lo mismo. */
+.dish-grid { align-items: stretch; }
+
+/* Las bebidas son botellas verticales y los platos apaisados no son círculos:
+   cada forma declara su propio alto en función del mismo ancho. */
+.dish-editorial-card--portrait.dish-editorial-card--beverage { --card-media: 116px; --card-media-h: calc(var(--card-media) * 1.42); }
+.dish-editorial-card--portrait.dish-editorial-card--media-horizontal { --card-media: 168px; --card-media-h: calc(var(--card-media) / 1.5); }
+
+@media (min-width: 561px) {
+  .dish-editorial-card--portrait { --card-media: 190px; --card-float: 62px; --card-aire: 16px; }
+  .dish-editorial-card--portrait.dish-editorial-card--beverage { --card-media: 160px; }
+  .dish-editorial-card--portrait.dish-editorial-card--media-horizontal { --card-media: 236px; }
+}
+@media (min-width: 1024px) {
+  .dish-editorial-card--portrait { --card-media: 216px; --card-float: 72px; --card-aire: 18px; }
+  .dish-editorial-card--portrait.dish-editorial-card--beverage { --card-media: 180px; }
+  .dish-editorial-card--portrait.dish-editorial-card--media-horizontal { --card-media: 268px; }
+}
+
+/* ── 3. Tipografía de la tarjeta ──
+   El título se reserva dos líneas siempre. Sin eso, un plato de nombre corto
+   subía todo su bloque y la fila quedaba desalineada. */
+.dish-editorial-card--portrait .dish-editorial-card__title-row { align-items: flex-start; gap: 10px; }
+.dish-editorial-card--portrait .dish-editorial-card__surface h3 {
+  display: -webkit-box;
+  font-size: 13.5px;
+  letter-spacing: -.025em;
+  line-height: 1.24;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: calc(2 * 1.24em);
+  overflow: hidden;
+}
+.dish-editorial-card--portrait .dish-editorial-card__surface > p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 7px 0 12px;
+  min-height: calc(2 * 1.5em);
+}
+.dish-editorial-card--portrait .dish-editorial-card__footer { border-top: 1px solid var(--messa-line); padding-top: 11px; }
+.dish-editorial-card--portrait .dish-editorial-card__footer strong { font-size: 13px; }
+@media (min-width: 561px) {
+  .dish-editorial-card--portrait .dish-editorial-card__surface h3 { font-size: 16px; }
+  .dish-editorial-card--portrait .dish-editorial-card__surface > p { font-size: 12.5px; }
+  .dish-editorial-card--portrait .dish-editorial-card__footer strong { font-size: 15px; }
+}
+
+/* ── 4. El botón "+" ──
+   El color se define arriba (dorado en los dos temas); acá sólo el tamaño. */
+.dish-editorial-card__surface .dish-editorial-card__title-row .icon-button {
+  flex: 0 0 34px;
+  height: 34px;
+  width: 34px;
+}
+.dish-editorial-card__surface .dish-editorial-card__title-row .icon-button svg { color: currentColor; }
+
+/* ── 5. Superficie de la tarjeta ──
+   En oscuro era translúcida y dejaba ver el fondo de la página a través del
+   texto. Opaca y con un borde apenas marcado: se lee limpio y la foto que
+   flota arriba sigue recortándose contra el lienzo. */
+html[data-menu-theme="dark"] .dish-editorial-card__surface {
+  background: linear-gradient(160deg, #24221c, #1c1a16);
+  border: 1px solid rgba(255, 250, 239, .09);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .45);
+}
+html[data-menu-theme="dark"] .dish-editorial-card:hover .dish-editorial-card__surface {
+  border-color: rgba(198, 154, 63, .32);
+  box-shadow: 0 26px 56px rgba(0, 0, 0, .55);
+}
+html:not([data-menu-theme="dark"]) .dish-editorial-card__surface {
+  background: linear-gradient(160deg, #fffdf9, #f7f3ea);
+  border: 1px solid rgba(29, 27, 23, .07);
+  box-shadow: 0 14px 34px rgba(67, 54, 34, .09);
+}
+html:not([data-menu-theme="dark"]) .dish-editorial-card:hover .dish-editorial-card__surface {
+  border-color: rgba(198, 154, 63, .34);
+  box-shadow: 0 20px 44px rgba(67, 54, 34, .14);
+}
+
+/* La sombra bajo el plato le da apoyo; en claro estaba demasiado dura. */
+.dish-editorial-card__media-shadow { background: rgba(46, 38, 26, .18); bottom: 6%; filter: blur(14px); height: 9%; left: 16%; width: 68%; }
+html[data-menu-theme="dark"] .dish-editorial-card__media-shadow { background: rgba(0, 0, 0, .5); }
+
+/* ── 6. La barra de búsqueda dejaba ver el texto de atrás ──
+   Es `position: sticky`, así que el contenido pasa por debajo. El fondo era
+   translúcido y confiaba en `backdrop-filter`; donde el navegador no lo aplica
+   (o lo desactiva por ahorro de batería) se leía "SELECCIÓN" fantasma cruzando
+   la barra. Ahora el fondo es opaco por sí solo y el blur queda como mejora,
+   no como requisito. */
+html:not([data-menu-theme="dark"]) :is(.menu-header, .menu-dock) {
+  background: #fffdf8;
+  border: 1px solid rgba(29, 27, 23, .07);
+  box-shadow: 0 8px 26px rgba(43, 38, 28, .07);
+}
+html[data-menu-theme="dark"] :is(.menu-header, .menu-dock) {
+  background: #211f1a;
+  border: 1px solid rgba(255, 250, 239, .1);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .4);
+}
+
+/* ── 7. Los chips de categoría se cortaban sin avisar ──
+   El último quedaba partido contra el borde y parecía un error de maquetado,
+   no una lista que sigue. El degradado de máscara lo desvanece: se lee como
+   "hay más, deslizá". */
+.category-scroller {
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 34px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 34px), transparent 100%);
+  padding-right: 30px;
+  scroll-padding-inline: 8px;
+  scroll-snap-type: x proximity;
+}
+.category-pill { scroll-snap-align: start; }
+/* En pantallas anchas entran todos: sin corte no hace falta desvanecer. */
+@media (min-width: 900px) {
+  .category-scroller { mask-image: none; -webkit-mask-image: none; padding-right: 1px; }
+}
+
+/* ── 8. El dock inferior tapaba la última fila de platos ──
+   En la mesa, la barra "Carta / Pedido" está fija abajo y se comía media
+   tarjeta. Se reserva su alto real más el área segura del iPhone. */
+.menu-page--table-order { padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 560px) {
+  .menu-page--table-order { padding-bottom: calc(172px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── 9. El encabezado de sección respira ──
+   "SELECCIÓN / La carta" quedaba pegado a la barra. Y al filtrar por
+   categoría, el ancla de scroll tiene que dejar la barra libre. */
+.menu-list { scroll-margin-top: 148px; }
+.section-heading { margin-bottom: 22px; padding-top: 6px; }
+.section-heading > span { white-space: nowrap; }
+
+/* ── 10. La insignia de "solo lectura" ──
+   En el celular se colapsaba a un círculo dorado con un tilde: un check sin
+   texto no dice "esta carta es solo para mirar", dice "listo". Pasa a ser un
+   ojo, que sí se entiende sin leer nada, y conserva el texto accesible. */
+@media (max-width: 560px) {
+  .read-only-badge { border-radius: 50%; flex: 0 0 34px; }
+}
+/* El texto de la insignia se oculta en el celular sin perder el nodo, para que
+   `font-size: 0` no aplaste también al ícono. */
+@media (max-width: 560px) {
+  .read-only-badge { font-size: 11px; gap: 0; }
+  .read-only-badge > span { display: none; }
+}
+
+/* ── 11. Las esquinas redondeadas de la barra dejaban ver el texto de atrás ──
+   Con el fondo ya opaco quedaba un último resquicio: en los 22 px de radio de
+   cada esquina el contenido seguía asomando, y se veía un pedacito de letra
+   flotando al costado. La barra apoya sobre una repisa del color del lienzo
+   que sangra a todo el ancho, así lo que sube por detrás desaparece antes de
+   llegar a la esquina. */
+.menu-header, .menu-dock { position: sticky; }
+.menu-header::before, .menu-dock::before {
+  background: var(--messa-canvas);
+  content: '';
+  inset: -120px -50vw -10px;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+.menu-dock::before { inset: -18px -50vw -10px; }
+html[data-menu-theme="dark"] :is(.menu-header, .menu-dock)::before { background: #171612; }
+
+/* ── 12. La ficha del plato salía con letra blanca sobre fondo claro ──
+   El diálogo se monta FUERA de `.menu-page` (es hermano, no hijo), así que no
+   heredaba `--messa-ink`: heredaba el `color: #FFFFFF` del `body`, pensado
+   para el panel oscuro. En modo claro el título y el precio quedaban blancos
+   sobre crema, prácticamente ilegibles. Cada tema fija su tinta y su fondo
+   opaco de manera explícita. */
+html:not([data-menu-theme="dark"]) :is(.modal-backdrop, .dish-detail, .filter-sheet) { color: #1d1b17; }
+html[data-menu-theme="dark"] :is(.modal-backdrop, .dish-detail, .filter-sheet) { color: #f7f2e8; }
+
+html:not([data-menu-theme="dark"]) .dish-detail__surface {
+  background: linear-gradient(160deg, #fffdf9, #f6f2e9);
+  border: 1px solid rgba(29, 27, 23, .07);
+  box-shadow: 0 30px 76px rgba(43, 38, 28, .26);
+}
+html[data-menu-theme="dark"] .dish-detail__surface {
+  background: linear-gradient(160deg, #24221c, #1a1814) !important;
+  border-color: rgba(255, 250, 239, .1) !important;
+  box-shadow: 0 30px 76px rgba(0, 0, 0, .58) !important;
+}
+/* El desenfoque era el que dejaba ver los platos de atrás a través del texto. */
+.dish-detail__surface { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+html:not([data-menu-theme="dark"]) .filter-sheet { background: #fffdf9; }
+html[data-menu-theme="dark"] .filter-sheet { background: #211f1a; }
+
+/* Los ingredientes son etiquetas: fondo y tinta siempre en pareja. */
+html:not([data-menu-theme="dark"]) .ingredient-list span { background: #ece7dd; color: #1d1b17; }
+html[data-menu-theme="dark"] .ingredient-list span { background: rgba(255, 250, 239, .09); color: #f7f2e8; }
+html:not([data-menu-theme="dark"]) .recommendation-rail button { background: #fffdf9; border-color: rgba(29, 27, 23, .09); color: #1d1b17; }
+html[data-menu-theme="dark"] .recommendation-rail button { background: rgba(255, 250, 239, .06); border-color: rgba(255, 250, 239, .11); color: #f7f2e8; }
+html:not([data-menu-theme="dark"]) .filter-option { background: #fffdf9; color: #1d1b17; }
+html[data-menu-theme="dark"] .filter-option { background: rgba(255, 250, 239, .06); border-color: rgba(255, 250, 239, .12); color: #f7f2e8; }
+
+/* ── 13. La pestaña inactiva del dock inferior casi no se leía ──
+   `rgba(255,250,239,.55)` sobre el fondo casi negro del dock queda por debajo
+   del mínimo de contraste. Se sube a .78, que sigue leyéndose como "inactiva"
+   al lado de la activa (crema llena) pero ya es legible. */
+.mesa-bottom-nav > button { color: rgba(255, 250, 239, .78); }
+.mesa-bottom-nav > button svg { color: currentColor; }
+.mesa-bottom-nav > button.active, .mesa-bottom-nav > button.gold { background: #fffaf0; color: #1e1b16; }
+
+/* ── 14. El aviso emergente se montaba sobre el nombre del restaurante ──
+   Aparecía a 18 px del borde, encima de la cabecera pegajosa: tapaba el nombre
+   del restaurante y el número de mesa justo cuando el comensal acaba de
+   sentarse. Pasa abajo, apoyado sobre el dock —el lugar donde iOS pone las
+   confirmaciones—, donde no hay nada fijo con lo que chocar. */
+.menu-feedback-toast {
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  top: auto;
+}
+.menu-page--readonly ~ .menu-feedback-toast,
+.menu-page--readonly .menu-feedback-toast { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+@keyframes menu-toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.menu-feedback-toast.fade-in { animation: menu-toast-in .24s var(--messa-ease) both; }

@@ -460,7 +460,9 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
         <div className="menu-choice-list">
           {config.panera.opciones.map(opcion => (
             <button type="button" key={opcion.id} onClick={() => handlePanera(opcion.id)}>
-              <span><b>{opcion.nombre}</b><small>Se suma a esta mesa</small></span>
+              {/* La opción de rechazar también decía "Se suma a esta mesa", que
+                  es justo lo contrario de lo que hace. */}
+              <span><b>{opcion.nombre}</b><small>{opcion.precio > 0 ? 'Se suma a esta mesa' : 'Seguimos sin panera'}</small></span>
               <strong>{opcion.precio > 0 ? formatPrecio(opcion.precio) : 'Sin cargo'}</strong>
             </button>
           ))}

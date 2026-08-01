@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Check, ChefHat, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { Check, ChefHat, Eye, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import type { Categoria, Plato } from '@/types'
 import { formatPrecio } from '@/lib/utils'
 import DishEditorialCard from './DishEditorialCard'
@@ -66,7 +66,10 @@ export default function MenuExperience({
         </div>
         <div className="menu-header__actions">
           <PublicThemeToggle compact />
-          {status || (mode === 'readonly' && <span className="read-only-badge"><Check size={14} /> Solo lectura</span>)}
+          {/* En el celular la insignia se reduce a su ícono. Un tilde ahí se lee
+              como "listo/confirmado"; el ojo dice "esto es sólo para mirar". El
+              texto queda igual para lectores de pantalla. */}
+          {status || (mode === 'readonly' && <span className="read-only-badge" title="Carta en modo solo lectura"><Eye size={15} aria-hidden="true" /> <span>Solo lectura</span></span>)}
         </div>
       </header>
 
