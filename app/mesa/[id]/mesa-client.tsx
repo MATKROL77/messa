@@ -179,6 +179,31 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
 
   const pedidosMesa = pedidos.filter(p => p.mesa_id === mesaId && p.estado !== 'cancelado')
   const pedidosEnCocina = pedidosMesa.filter(p => ['en_cocina', 'entregado'].includes(p.estado))
+
+  /**
+   * Acredita los puntos del consumo en la cuenta del comensal (si tiene una en
+   * /cuenta y está logueado en este dispositivo). Se dispara al cerrar la
+   * cuenta y no bloquea nada: si falla —no hay cuenta, no hay base de datos,
+   * se cortó la conexión— el pago igual se completa y el saldo local de
+   * fidelidad sigue funcionando como siempre.
+   */
+  const acreditarPuntosDeCuenta = (monto: number) => {
+    if (!fidelidadConfig.habilitado || monto <= 0) return
+    const codigo = accesoRecordado(mesaId)
+    if (!codigo) return
+    void fetch(withBasePath('/api/cuenta/puntos'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        monto,
+        mesaId,
+        codigo,
+        puntosPor1000: fidelidadConfig.puntos_por_1000_gastado,
+        referencia: `mesa:${mesaId}`,
+      }),
+    }).catch(() => {})
+  }
+
   const idsUltimaCuenta = ultimaCuentaPagada[mesaId] || []
   const pedidosPagados = pedidosMesa.filter(p => idsUltimaCuenta.includes(p.id) && p.estado === 'pagado' && p.confirmado_staff !== false)
   const yaHayPedido = pedidosEnCocina.length > 0
@@ -267,6 +292,10 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
       .then(r => r.json() as Promise<VerificacionPagoResponse>)
       .then(data => {
         if (data.ok && data.aprobado) {
+          // Los puntos se acreditan también al volver del checkout externo:
+          // este camino no pasa por PagoView, así que sin esto un pago con
+          // Mercado Pago real no sumaría nada a la cuenta del comensal.
+          acreditarPuntosDeCuenta(parcialUrl > 0 ? parcialUrl : pedidosEnCocina.reduce((suma, pedido) => suma + pedido.total, 0))
           const resultado = parcialUrl > 0
             ? registrarPagoParcial(mesaId, parcialUrl, propinaUrl, 'mercadopago', emailUrl)
             : (marcarComoPagado(mesaId, 'mercadopago', propinaUrl, emailUrl), { saldado: true, restante: 0 })
@@ -480,7 +509,7 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
       )}
 
       {vista === 'carrito' && <CarritoView carrito={carrito} sesionDispositivoId={sesion?.dispositivo_id || ''} onRemover={quitarDelCarrito} onActualizar={actualizarCantidad} onVolver={() => setVista('menu')} onPedir={handleConfirmarPedido} onIrPago={() => setVista('pago')} pedidoEnviado={pedidoEnviado} paneraAceptada={panera_aceptada} paneraConfig={config.panera} esModoStaff={esModoStaff} />}
-      {vista === 'pago' && !esModoStaff && <PagoView pedidos={pedidosEnCocina} propinaConfig={propinaConfig} pagoCompletado={pagoCompletado} setPagoCompletado={setPagoCompletado} onVolver={() => setVista('menu')} sesionDispositivoId={sesion?.dispositivo_id || ''} mesaId={mesaId} mesaNumero={mesaNumero} config={config} marcarComoPagado={marcarComoPagado} registrarPagoParcial={registrarPagoParcial} yaAportado={saldoPendienteMesa(mesaId).cubierto} prepararPagoManual={prepararPagoManual} setModoPostPago={setModoPostPago} irAResenas={() => setVista('reviews')} onLlamarMozo={handleLlamarMozo} emailPago={emailPago} setEmailPago={setEmailPago} />}
+      {vista === 'pago' && !esModoStaff && <PagoView pedidos={pedidosEnCocina} propinaConfig={propinaConfig} pagoCompletado={pagoCompletado} setPagoCompletado={setPagoCompletado} onVolver={() => setVista('menu')} sesionDispositivoId={sesion?.dispositivo_id || ''} mesaId={mesaId} mesaNumero={mesaNumero} config={config} marcarComoPagado={marcarComoPagado} registrarPagoParcial={registrarPagoParcial} yaAportado={saldoPendienteMesa(mesaId).cubierto} prepararPagoManual={prepararPagoManual} setModoPostPago={setModoPostPago} irAResenas={() => setVista('reviews')} onLlamarMozo={handleLlamarMozo} emailPago={emailPago} setEmailPago={setEmailPago} acreditarPuntos={acreditarPuntosDeCuenta} />}
       {vista === 'reviews' && !esModoStaff && <ReviewsView pedidos={pedidosPagados} resenasEnviadas={resenasEnviadas} reviewPlatos={reviewPlatos} setReviewPlatos={setReviewPlatos} onEnviar={handleEnviarResenas} fidelidadHabilitado={fidelidadConfig.habilitado && Boolean(emailPago)} puntosPorResena={fidelidadConfig.puntos_por_resena} onVolver={() => setVista('menu')} />}
 
       {vista === 'menu' && !esPostPago && !esModoStaff && (
@@ -753,9 +782,11 @@ interface PagoViewProps {
   onLlamarMozo: (motivo: string) => void
   emailPago: string
   setEmailPago: Dispatch<SetStateAction<string>>
+  /** Suma los puntos del consumo a la cuenta del comensal, si tiene una. */
+  acreditarPuntos: (monto: number) => void
 }
 
-function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, onVolver, sesionDispositivoId, mesaId, mesaNumero, config, marcarComoPagado, registrarPagoParcial, yaAportado, prepararPagoManual, setModoPostPago, irAResenas, onLlamarMozo, emailPago, setEmailPago }: PagoViewProps) {
+function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, onVolver, sesionDispositivoId, mesaId, mesaNumero, config, marcarComoPagado, registrarPagoParcial, yaAportado, prepararPagoManual, setModoPostPago, irAResenas, onLlamarMozo, emailPago, setEmailPago, acreditarPuntos }: PagoViewProps) {
   const todosItems: ItemPedido[] = pedidos.flatMap(pedido => pedido.items)
   const misItems = todosItems.filter((i: ItemPedido) => i.dispositivo_id === sesionDispositivoId)
   const totalGeneral = todosItems.reduce((acc: number, i: ItemPedido) => acc + i.precio_unitario * i.cantidad, 0)
@@ -813,6 +844,9 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
   const esPagoParcial = metodoPago === 'dividido' || metodoPago === 'partes'
 
   const aplicarPago = (metodo: MetodoPago) => {
+    // Los puntos se acreditan sobre lo que efectivamente paga esta persona, así
+    // que en una cuenta dividida cada comensal suma por su propio aporte.
+    acreditarPuntos(baseCalculo)
     if (!esPagoParcial) {
       marcarComoPagado(mesaId, metodo, propinaMonto, emailPago)
       return { saldado: true, restante: 0 }

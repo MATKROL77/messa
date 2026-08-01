@@ -1,5 +1,8 @@
 export type MesaEstado = 'libre' | 'ocupada' | 'pedido' | 'pagando' | 'pagada'
-export type RolUsuario = 'creator' | 'admin' | 'editor' | 'staff'
+// Rangos, de mayor a menor alcance. 'creator' sólo se define por variables de
+// entorno del servidor: no es asignable desde el backoffice, para que nadie
+// pueda escalar hasta control total creando una cuenta.
+export type RolUsuario = 'creator' | 'admin' | 'gerente' | 'editor' | 'staff'
 export type MetodoPago = 'tarjeta' | 'transferencia' | 'mercadopago' | 'efectivo'
 export type OrigenPedido = 'mesa' | 'pedidosya' | 'rappi' | 'ubereats' | 'otro'
 export type PlataformaDelivery = 'pedidosya' | 'rappi' | 'ubereats' | 'otro'

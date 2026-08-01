@@ -6,7 +6,7 @@
 // Esto reemplaza al MASTER_PASSWORD hardcodeado que existía antes en
 // lib/store.ts — ya no está en el código fuente en ningún lado.
 
-export type RolFijo = 'creator' | 'admin' | 'editor' | 'staff'
+export type RolFijo = 'creator' | 'admin' | 'gerente' | 'editor' | 'staff'
 
 export interface CuentaFija {
   email: string
@@ -34,6 +34,9 @@ export function obtenerCuentasFijas(): CuentaFija[] {
   }
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD_HASH) {
     cuentas.push({ email: process.env.ADMIN_EMAIL, passwordHash: process.env.ADMIN_PASSWORD_HASH, nombre: process.env.ADMIN_NOMBRE || 'Dueño del restaurante', rol: 'admin' })
+  }
+  if (process.env.GERENTE_EMAIL && process.env.GERENTE_PASSWORD_HASH) {
+    cuentas.push({ email: process.env.GERENTE_EMAIL, passwordHash: process.env.GERENTE_PASSWORD_HASH, nombre: process.env.GERENTE_NOMBRE || 'Gerente', rol: 'gerente' })
   }
   if (process.env.EDITOR_EMAIL && process.env.EDITOR_PASSWORD_HASH) {
     cuentas.push({ email: process.env.EDITOR_EMAIL, passwordHash: process.env.EDITOR_PASSWORD_HASH, nombre: process.env.EDITOR_NOMBRE || 'Editor', rol: 'editor' })

@@ -32,6 +32,7 @@ const PERMISO_RUTA: { prefix: string; permiso: PermisoAdmin }[] = [
 const ROL_LABEL: Record<RolUsuario, { label: string; color: string }> = {
   creator: { label: 'Creador', color: '#d7b567' },
   admin: { label: 'Administrador', color: '#94b9db' },
+  gerente: { label: 'Gerente', color: '#b3a4d9' },
   editor: { label: 'Editor', color: '#82bd99' },
   staff: { label: 'Staff', color: '#d4cdbf' },
 }

@@ -3653,3 +3653,412 @@ html[data-admin-theme="light"] .messa-segmented button.active span { background:
 .messa-dropzone__note { color: var(--admin-text-muted); font-size: 10px; line-height: 1.5; margin: 8px 0 0; }
 .messa-dropzone__url { flex: 1; }
 html[data-admin-theme="light"] .messa-dropzone { background: rgba(255, 255, 255, .6); border-color: rgba(29, 27, 23, .16); }
+
+/* ══════════════════════════════════════════════════════════════
+   Área del comensal (/cuenta) — cuenta propia, puntos y rangos.
+   Vive del lado público (data-menu-theme), no del backoffice, así
+   que declara sus propios tokens para claro y oscuro en vez de
+   heredar los del panel.
+   ══════════════════════════════════════════════════════════════ */
+.messa-cuenta-page {
+  --cuenta-bg: #f7f4ee;
+  --cuenta-surface: #fffdf9;
+  --cuenta-border: rgba(29, 27, 23, .12);
+  --cuenta-text: #1d1b17;
+  --cuenta-muted: #6c6559;
+  background: var(--cuenta-bg);
+  color: var(--cuenta-text);
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+html[data-menu-theme="dark"] .messa-cuenta-page {
+  --cuenta-bg: #171612;
+  --cuenta-surface: #211f1a;
+  --cuenta-border: rgba(255, 250, 239, .13);
+  --cuenta-text: #f7f2e8;
+  --cuenta-muted: rgba(247, 242, 232, .62);
+}
+
+.messa-cuenta-topbar {
+  align-items: center;
+  backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--cuenta-bg) 86%, transparent);
+  border-bottom: 1px solid var(--cuenta-border);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr auto 1fr;
+  padding: 14px 18px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.messa-cuenta-topbar > strong { font-size: 17px; letter-spacing: .01em; text-align: center; }
+.messa-cuenta-back {
+  align-items: center;
+  color: var(--cuenta-text);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  justify-self: start;
+  text-decoration: none;
+}
+.messa-cuenta-back svg { color: currentColor; }
+.messa-cuenta-topbar > :last-child { justify-self: end; }
+
+.messa-cuenta-loading { color: var(--cuenta-muted); padding: 80px 20px; text-align: center; }
+
+.messa-cuenta-main {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  margin: 0 auto;
+  max-width: 980px;
+  padding: 32px 18px 20px;
+}
+.messa-cuenta-main--activa { grid-template-columns: minmax(0, 1fr); max-width: 620px; }
+
+.messa-cuenta-hero h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.1; margin: 12px 0 10px; }
+.messa-cuenta-hero > p { color: var(--cuenta-muted); font-size: 14px; line-height: 1.6; margin: 0 0 20px; max-width: 46ch; }
+.messa-cuenta-eyebrow {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent, #c69a3f) 14%, transparent);
+  border-radius: 999px;
+  color: var(--messa-accent-ink, #8a6a1f);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 6px;
+  letter-spacing: .06em;
+  padding: 5px 11px;
+  text-transform: uppercase;
+}
+html[data-menu-theme="dark"] .messa-cuenta-eyebrow { color: var(--messa-accent-ink-dark, #e8c979); }
+.messa-cuenta-eyebrow svg { color: currentColor; }
+
+.messa-cuenta-rangos { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+.messa-cuenta-rangos li { align-items: flex-start; display: flex; gap: 11px; }
+.messa-cuenta-rango-punto { border-radius: 50%; flex: 0 0 10px; height: 10px; margin-top: 5px; width: 10px; }
+.messa-cuenta-rangos b { display: block; font-size: 14px; }
+.messa-cuenta-rangos small { color: var(--cuenta-muted); font-size: 12px; line-height: 1.5; }
+
+.messa-cuenta-form {
+  background: var(--cuenta-surface);
+  border: 1px solid var(--cuenta-border);
+  border-radius: 20px;
+  display: grid;
+  gap: 14px;
+  height: fit-content;
+  padding: 22px;
+}
+.messa-cuenta-tabs {
+  background: color-mix(in srgb, var(--cuenta-text) 6%, transparent);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+}
+.messa-cuenta-tabs button {
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: var(--cuenta-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 8px;
+  transition: background .18s ease, color .18s ease;
+}
+/* Fondo claro ⇒ texto oscuro, y al revés: el par se declara junto para que no
+   se pueda cambiar uno sin el otro. */
+.messa-cuenta-tabs button.active { background: var(--cuenta-surface); color: var(--cuenta-text); }
+html[data-menu-theme="dark"] .messa-cuenta-tabs button.active { background: #33302a; color: #f7f2e8; }
+
+.messa-cuenta-campo { display: grid; gap: 6px; }
+.messa-cuenta-campo > span {
+  align-items: center;
+  color: var(--cuenta-muted);
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+}
+.messa-cuenta-campo > span svg { color: var(--messa-accent, #c69a3f); }
+.messa-cuenta-campo > span small { font-weight: 400; opacity: .8; text-transform: lowercase; }
+.messa-cuenta-campo input {
+  background: color-mix(in srgb, var(--cuenta-text) 4%, transparent);
+  border: 1px solid var(--cuenta-border);
+  border-radius: 11px;
+  color: var(--cuenta-text);
+  font-size: 15px; /* 16px o más evita que iOS haga zoom al enfocar */
+  padding: 12px 13px;
+  width: 100%;
+}
+.messa-cuenta-campo input:focus-visible {
+  border-color: var(--messa-accent, #c69a3f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--messa-accent, #c69a3f) 22%, transparent);
+}
+.messa-cuenta-campo input::placeholder { color: var(--cuenta-muted); opacity: .75; }
+
+.messa-cuenta-submit {
+  background: linear-gradient(135deg, #efd88f, #c69a3f);
+  border: 0;
+  border-radius: 12px;
+  color: #211c13; /* siempre oscuro: el fondo del botón es dorado claro */
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 13px;
+  transition: transform .16s ease, filter .16s ease;
+}
+.messa-cuenta-submit:hover:not(:disabled) { transform: translateY(-1px); }
+.messa-cuenta-submit:disabled { cursor: not-allowed; filter: saturate(.35); opacity: .6; }
+
+.messa-cuenta-error {
+  background: rgba(192, 89, 78, .12);
+  border: 1px solid rgba(192, 89, 78, .28);
+  border-radius: 10px;
+  color: #a63d31;
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 12px;
+}
+html[data-menu-theme="dark"] .messa-cuenta-error { color: #f0a79d; }
+
+.messa-cuenta-nota { color: var(--cuenta-muted); font-size: 12px; margin: 0; text-align: center; }
+.messa-cuenta-nota a { color: var(--cuenta-text); text-underline-offset: 3px; }
+
+/* ── Tarjeta de socio ── */
+.messa-cuenta-tarjeta {
+  background: var(--cuenta-surface);
+  border: 1px solid var(--cuenta-border);
+  border-radius: 22px;
+  border-top: 3px solid var(--rango-color, #c69a3f);
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+}
+.messa-cuenta-tarjeta header { display: grid; gap: 5px; justify-items: start; }
+.messa-cuenta-tarjeta header strong { font-size: 22px; }
+.messa-cuenta-tarjeta header small { color: var(--cuenta-muted); font-size: 12px; }
+.messa-cuenta-puntos { align-items: baseline; display: flex; gap: 8px; }
+.messa-cuenta-puntos b { font-size: 44px; font-weight: 300; letter-spacing: -.02em; line-height: 1; }
+.messa-cuenta-puntos span { color: var(--cuenta-muted); font-size: 13px; }
+.messa-cuenta-beneficio { color: var(--cuenta-muted); font-size: 13px; line-height: 1.55; margin: 0; }
+.messa-cuenta-progreso { display: grid; gap: 7px; }
+.messa-cuenta-progreso-barra {
+  background: color-mix(in srgb, var(--cuenta-text) 9%, transparent);
+  border-radius: 999px;
+  height: 7px;
+  overflow: hidden;
+}
+.messa-cuenta-progreso-barra i { background: var(--rango-color, #c69a3f); display: block; height: 100%; }
+.messa-cuenta-progreso small { color: var(--cuenta-muted); font-size: 12px; }
+
+/* ── Paneles de recompensas y movimientos ── */
+.messa-cuenta-panel {
+  background: var(--cuenta-surface);
+  border: 1px solid var(--cuenta-border);
+  border-radius: 20px;
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+.messa-cuenta-panel h2 { font-size: 18px; margin: 0; }
+.messa-cuenta-vacio { color: var(--cuenta-muted); font-size: 12.5px; line-height: 1.55; margin: 0; }
+
+.messa-cuenta-recompensas, .messa-cuenta-movimientos { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.messa-cuenta-recompensas li {
+  align-items: center;
+  border: 1px solid var(--cuenta-border);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 12px 14px;
+}
+.messa-cuenta-recompensas li.alcanzada { border-color: color-mix(in srgb, var(--messa-accent, #c69a3f) 50%, transparent); }
+.messa-cuenta-recompensa-icono {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent, #c69a3f) 14%, transparent);
+  border-radius: 10px;
+  color: var(--messa-accent-ink, #8a6a1f);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+html[data-menu-theme="dark"] .messa-cuenta-recompensa-icono { color: var(--messa-accent-ink-dark, #e8c979); }
+.messa-cuenta-recompensas b { display: block; font-size: 14px; }
+.messa-cuenta-recompensas small { color: var(--cuenta-muted); font-size: 12px; line-height: 1.45; }
+.messa-cuenta-recompensa-puntos { color: var(--cuenta-muted); font-size: 11.5px; font-weight: 600; text-align: right; white-space: nowrap; }
+.messa-cuenta-recompensas li.alcanzada .messa-cuenta-recompensa-puntos { color: var(--messa-accent-ink, #8a6a1f); }
+html[data-menu-theme="dark"] .messa-cuenta-recompensas li.alcanzada .messa-cuenta-recompensa-puntos { color: var(--messa-accent-ink-dark, #e8c979); }
+
+.messa-cuenta-movimientos li {
+  align-items: center;
+  border-bottom: 1px solid var(--cuenta-border);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+.messa-cuenta-movimientos li:last-child { border-bottom: 0; padding-bottom: 0; }
+.messa-cuenta-movimientos b { display: block; font-size: 13.5px; font-weight: 500; }
+.messa-cuenta-movimientos small { color: var(--cuenta-muted); font-size: 11.5px; }
+.messa-cuenta-movimientos .suma { color: #1f6340; font-weight: 700; }
+.messa-cuenta-movimientos .resta { color: #a63d31; font-weight: 700; }
+html[data-menu-theme="dark"] .messa-cuenta-movimientos .suma { color: #6fc79b; }
+html[data-menu-theme="dark"] .messa-cuenta-movimientos .resta { color: #f0a79d; }
+
+.messa-cuenta-salir {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--cuenta-border);
+  border-radius: 12px;
+  color: var(--cuenta-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 7px;
+  justify-content: center;
+  padding: 12px;
+}
+.messa-cuenta-salir:hover { color: var(--cuenta-text); }
+.messa-cuenta-salir svg { color: currentColor; }
+
+@media (max-width: 760px) {
+  .messa-cuenta-main { gap: 26px; grid-template-columns: minmax(0, 1fr); padding: 24px 16px 16px; }
+  .messa-cuenta-topbar { padding: 12px 14px; }
+  .messa-cuenta-form, .messa-cuenta-panel, .messa-cuenta-tarjeta { padding: 18px; }
+  .messa-cuenta-recompensas li { grid-template-columns: auto minmax(0, 1fr); }
+  .messa-cuenta-recompensa-puntos { grid-column: 2; text-align: left; }
+}
+
+/* La matriz de permisos pasó de 4 a 5 rangos al sumarse "gerente": la grilla
+   se declara con el número de columnas real para que no se corte la última. */
+.messa-permission-row { grid-template-columns: minmax(150px, 1.5fr) repeat(5, minmax(72px, .6fr)); }
+
+/* Etiqueta sólo para lectores de pantalla: el <select> de rango se entiende
+   visualmente por su posición, pero sin nombre accesible no se puede usar. */
+.sr-only {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* ── Cuentas del equipo (Administración → Usuarios) ── */
+.messa-team-list { display: grid; gap: 10px; }
+.messa-team-list article {
+  align-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  padding: 12px 14px;
+}
+.messa-team-list article.inactiva { opacity: .58; }
+.messa-team-identity { display: grid; gap: 3px; min-width: 0; }
+.messa-team-identity b { color: var(--admin-text); font-size: 13px; }
+.messa-team-identity small { color: var(--admin-text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.messa-team-rol select {
+  background: rgba(255, 250, 239, .06);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+html[data-admin-theme="light"] .messa-team-rol select { background: #fff; color: #1d1b17; }
+.messa-team-borrar {
+  align-items: center;
+  background: rgba(192, 89, 78, .12);
+  border: 1px solid rgba(211, 116, 105, .22);
+  border-radius: 10px;
+  color: #e39a91;
+  cursor: pointer;
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+.messa-team-borrar svg { color: currentColor; }
+.messa-team-borrar:disabled { cursor: not-allowed; opacity: .45; }
+html[data-admin-theme="light"] .messa-team-borrar { background: rgba(178, 60, 48, .1); border-color: rgba(178, 60, 48, .24); color: #9e3125; }
+
+/* ── Padrón de clientes (Administración → Fidelidad) ── */
+.messa-client-table { display: grid; gap: 2px; }
+.messa-client-row {
+  align-items: center;
+  border-top: 1px solid var(--admin-border);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 2fr) auto minmax(70px, .5fr) minmax(80px, .6fr);
+  min-height: 48px;
+}
+.messa-client-row:first-child { border-top: 0; }
+.messa-client-row--header {
+  color: var(--admin-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  min-height: 30px;
+  text-transform: uppercase;
+}
+.messa-client-row > span { color: var(--admin-text-muted); font-size: 11.5px; min-width: 0; }
+.messa-client-row > span:first-child { display: grid; gap: 2px; }
+.messa-client-row b { color: var(--admin-text); font-size: 12.5px; }
+.messa-client-row small { color: var(--admin-text-muted); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.messa-client-row strong { color: var(--admin-text); font-size: 13px; }
+.messa-client-rank {
+  background: color-mix(in srgb, var(--rango-color, #c69a3f) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rango-color, #c69a3f) 40%, transparent);
+  border-radius: 999px;
+  color: var(--admin-text);
+  display: inline-block;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 3px 9px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .messa-team-list article { grid-template-columns: minmax(0, 1fr) auto; }
+  .messa-team-rol { grid-column: 1 / -1; }
+  .messa-team-rol select { width: 100%; }
+  .messa-client-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .messa-client-row > span:nth-child(4), .messa-client-row--header { display: none; }
+  .messa-client-row--header { display: none; }
+}
+
+/* Portada: la entrada del comensal a su cuenta convive con la del equipo, pero
+   se distingue de un vistazo (dorada la del cliente, discreta la del staff). */
+.messa-home__links { align-items: center; display: flex; gap: 14px; }
+.messa-home__account-link {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent, #c69a3f) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--messa-accent, #c69a3f) 38%, transparent);
+  border-radius: 999px;
+  color: var(--messa-accent-ink, #8a6a1f);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 13px;
+  text-decoration: none;
+}
+.messa-home__account-link svg { color: currentColor; }
+.messa-home__account-link:hover { background: color-mix(in srgb, var(--messa-accent, #c69a3f) 24%, transparent); }
+@media (max-width: 700px) {
+  .messa-home__links { gap: 10px; }
+  .messa-home__account-link { font-size: 11.5px; min-height: 40px; padding: 0 11px; }
+}

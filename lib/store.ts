@@ -29,6 +29,9 @@ export type PermisoAdmin = 'resumen' | 'carta' | 'salon' | 'pedidos' | 'inventar
 const PERMISOS_ADMIN_DEFAULT: Record<RolUsuario, PermisoAdmin[]> = {
   creator: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad'],
   admin: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad'],
+  // El gerente maneja el turno completo —incluida la caja y la fidelidad— pero
+  // no toca la identidad de la marca, las sucursales ni el equipo.
+  gerente: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad'],
   editor: ['resumen', 'carta', 'inventario'],
   staff: ['resumen', 'salon', 'pedidos', 'reservas'],
 }
@@ -322,7 +325,7 @@ export const useStore = create<AppStore>()(
       ultimaCuentaPagada: {},
       pagosParciales: {},
       permisosAdmin: PERMISOS_ADMIN_DEFAULT,
-      permisosVersion: 1,
+      permisosVersion: 3,
 
         initStore: () => {
           set(state => ({
@@ -332,10 +335,16 @@ export const useStore = create<AppStore>()(
             insumos: sincronizarInsumosMessa(state.insumos),
             categoriasDisponibles: sincronizarCategoriasMessa(state.categoriasDisponibles),
             mesas: sincronizarCodigosDeMesa(state.mesas),
-            permisosAdmin: state.permisosVersion < 2
-              ? { ...state.permisosAdmin, admin: PERMISOS_ADMIN_DEFAULT.admin }
-              : state.permisosAdmin,
-            permisosVersion: 2,
+            // v2 devolvió al admin los módulos que una persistencia vieja le
+            // había recortado. v3 incorpora el rango 'gerente', que no existía
+            // cuando se guardó la matriz: sin esto, un navegador con datos
+            // previos deja al gerente sin ningún acceso.
+            permisosAdmin: {
+              ...state.permisosAdmin,
+              ...(state.permisosVersion < 2 ? { admin: PERMISOS_ADMIN_DEFAULT.admin } : {}),
+              gerente: state.permisosAdmin?.gerente || PERMISOS_ADMIN_DEFAULT.gerente,
+            },
+            permisosVersion: 3,
           }))
         },
 

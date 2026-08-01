@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { obtenerCuentasFijas } from '@/lib/auth-config'
 import { crearToken } from '@/lib/session'
+import { db, filtro, baseDatosLista } from '@/lib/supabase-admin'
+import type { RolUsuario } from '@/types'
+
+interface UsuarioStaffDB {
+  email: string
+  password_hash: string
+  nombre: string
+  rol: RolUsuario
+  activo: boolean
+}
+
+/**
+ * Cuentas del equipo creadas desde el backoffice (tabla `usuarios_staff`).
+ * Es un complemento de las cuentas fijas de variables de entorno, no un
+ * reemplazo: si la base no está configurada o las tablas todavía no existen,
+ * esto devuelve null y el login sigue funcionando con las cuentas de .env.
+ */
+async function buscarCuentaEnBase(email: string) {
+  if (!baseDatosLista) return null
+  try {
+    return await db.primera<UsuarioStaffDB>('usuarios_staff', `?email=eq.${filtro(email)}&select=*`)
+  } catch {
+    return null
+  }
+}
 
 // Rate limiting simple en memoria (por instancia — ver nota en LEEME.md sobre
 // límites de esto en un entorno serverless con múltiples instancias; para un
@@ -34,15 +59,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'El servidor no tiene SESSION_SECRET configurado. Revisá tus variables de entorno (.env.example).' }, { status: 500 })
   }
 
-  const cuentas = obtenerCuentasFijas()
-  const cuenta = cuentas.find(c => c.email.toLowerCase() === email)
+  // Las cuentas fijas de variables de entorno tienen prioridad: son la llave
+  // de emergencia que entra al panel aunque la base de datos esté caída.
+  const fija = obtenerCuentasFijas().find(c => c.email.toLowerCase() === email)
+  const enBase = fija ? null : await buscarCuentaEnBase(email)
+
+  const cuenta = fija
+    ? { email: fija.email, nombre: fija.nombre, rol: fija.rol as RolUsuario, passwordHash: fija.passwordHash, activo: true }
+    : enBase
+      ? { email: enBase.email, nombre: enBase.nombre, rol: enBase.rol, passwordHash: enBase.password_hash, activo: enBase.activo }
+      : null
 
   // Comparación bcrypt real del lado del servidor. Si no hay cuenta con ese
   // email, igual corremos un compare contra un hash dummy para que el tiempo
   // de respuesta no delate si el email existe o no (mitiga timing attacks /
   // enumeración de usuarios).
   const hashAComparar = cuenta?.passwordHash || '$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinva'
-  const valido = await bcrypt.compare(password, hashAComparar)
+  const valido = (await bcrypt.compare(password, hashAComparar)) && Boolean(cuenta?.activo)
 
   if (!cuenta || !valido) {
     const nuevoCount = (estado?.count || 0) + 1
@@ -55,6 +88,12 @@ export async function POST(req: NextRequest) {
   }
 
   intentos.delete(ip)
+
+  if (enBase) {
+    // Registro de último acceso. No debe poder tumbar el login si falla.
+    db.actualizar('usuarios_staff', `?email=eq.${filtro(cuenta.email)}`, { ultimo_acceso: new Date().toISOString() })
+      .catch(error => console.error('No se pudo registrar el último acceso', error))
+  }
 
   const token = crearToken({
     email: cuenta.email,

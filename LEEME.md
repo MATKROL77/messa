@@ -196,25 +196,95 @@ Ambas pantallas ahora dejan explícito, con una advertencia visible, que lo que 
 
 ---
 
-## 🔌 Conectar Supabase (el paso que falta para que todo sea 100% real)
+## 🔌 Conectar Supabase
 
-1. Creá un proyecto gratis en supabase.com
-2. Andá a SQL Editor → pegá el contenido de `supabase/schema.sql` → Run
-3. Copiá tus credenciales desde Project Settings → API
-4. Agregalas a tu `.env` / variables de entorno de tu hosting
-5. Pasame esas 3 credenciales (o hacelo vos siguiendo los comentarios en `lib/store.ts`) y migro cada acción del store para que lea/escriba en Supabase con Realtime en vez de localStorage — ahí sí un pedido hecho desde el celular aparece al instante en el Dashboard de la PC, sin excepciones.
+### Paso pendiente: correr la migración de cuentas
+
+**Esto lo tenés que hacer vos una sola vez, y son 30 segundos.** No lo puedo
+hacer yo con la service role key: la API REST de Supabase (PostgREST) sólo lee
+y escribe filas, no crea tablas. Crear tablas es DDL y necesita el SQL Editor o
+la cadena de conexión de Postgres.
+
+1. Entrá a tu proyecto en supabase.com → **SQL Editor** → **New query**
+2. Pegá todo el contenido de **`supabase/migration_04_cuentas_y_rangos.sql`**
+3. **Run**
+
+Con eso quedan creadas tres tablas:
+
+| Tabla | Para qué |
+|---|---|
+| `clientes` | Cuentas de comensales: email, hash de contraseña, puntos, rango |
+| `usuarios_staff` | Cuentas del equipo que creás desde `/admin/usuarios`, sin redeploy |
+| `movimientos_puntos` | Historial auditable de cada suma y resta de puntos |
+
+Las tres tienen **RLS activo y ninguna policy**, así que la anon key del
+navegador no las puede tocar: sólo el servidor, con la service role key.
+
+**Mientras la migración no esté corrida, nada se rompe.** Registrarse o abrir el
+padrón devuelve un 503 con el mensaje exacto de qué falta, y el login del equipo
+con las cuentas de variables de entorno sigue funcionando igual.
+
+### El resto de la base (pedidos, mesas, stock)
+
+1. SQL Editor → pegá `supabase/schema.sql` → Run (si todavía no lo hiciste)
+2. Copiá tus credenciales desde Project Settings → API
+3. Cargalas como secrets: `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`
+
+Falta todavía migrar las acciones de `lib/store.ts` (pedidos, mesas, stock) de
+localStorage a Supabase con Realtime. Hasta que eso pase, **un pedido hecho
+desde un celular no aparece en la PC de la cocina**: cada dispositivo tiene su
+propia copia. Las cuentas de clientes y del equipo sí son compartidas, porque
+viven en la base desde el principio.
+
+---
+
+## 👤 Cuentas de comensales y puntos
+
+La parte de afuera (clientes) y el backoffice (equipo) son dos puertas
+separadas, con cookies distintas que no se pisan:
+
+- **`/cuenta`** — el comensal se registra, ve sus puntos, su rango, las
+  recompensas a las que llega y su historial de movimientos. Cookie `mf_cliente`,
+  dura 30 días.
+- **`/login`** — el equipo entra al backoffice. Cookie `mf_session`, dura 12 horas.
+
+Los puntos se acreditan solos al cerrar la cuenta en la mesa: el navegador manda
+el monto junto con el código del QR de esa mesa, y el servidor verifica el
+código antes de sumar. Los rangos (Bronce → Plata → Oro → Platino) se recalculan
+solos a partir del saldo; no se editan a mano.
+
+> **Límite conocido:** como los pedidos todavía viven en el navegador, el
+> servidor no puede verificar contra la base cuánto gastó realmente esa mesa.
+> Por eso el monto está topeado y limitado en frecuencia. Cuando los pedidos
+> pasen a Supabase, `/api/cuenta/puntos` tiene que leer el total del pedido y
+> dejar de confiar en el monto que manda el cliente.
+
+Desde **Administración → Fidelidad** ves el padrón completo de cuentas y podés
+sumar o restar puntos a mano (para canjear una recompensa, por ejemplo).
 
 ---
 
 ## 🔑 Roles y accesos
 
-| Rol | Puede hacer |
+| Rango | Puede hacer |
 |---|---|
-| **Creador** | Todo — tema/marca, fidelidad, y es quien coordina el cambio de contraseñas de las otras cuentas |
-| **Dueño/Admin** | Carta, stock, pagos, finanzas, cierre, sucursales |
+| **Creador** | Todo — tema/marca, fidelidad, equipo. Sólo existe en variables de entorno |
+| **Dueño/Admin** | Gestión integral: carta, stock, pagos, finanzas, cierre, sucursales, equipo |
+| **Gerente** | El turno completo: salón, pedidos, caja, finanzas y fidelidad. No toca identidad, sucursales ni equipo |
 | **Editor** | Carta y stock únicamente |
+| **Staff** | Operación de salón: mesas, pedidos y reservas |
 
-Cambiar una contraseña: `node scripts/generar-hash.js "nueva"` → actualizar la variable de entorno → redeploy. Ver detalle en `/admin/usuarios` dentro de la app.
+Hay **dos formas** de tener una cuenta de equipo:
+
+1. **Variables de entorno** (`CREATOR_*`, `ADMIN_*`, `GERENTE_*`, `EDITOR_*`,
+   `STAFF_*`). Son la llave de emergencia: entran al panel aunque la base de
+   datos esté caída. Cambiar una contraseña acá es
+   `node scripts/generar-hash.js "nueva"` → actualizar la variable → redeploy.
+2. **Administración → Usuarios → Nueva cuenta**. Se guardan en `usuarios_staff`,
+   se crean y se borran en el momento, sin redeploy. Requiere la migración 04.
+   El rango `creator` **no** es asignable desde acá, a propósito: si lo fuera,
+   cualquiera con acceso al panel podría escalar a control total.
 
 ---
 
@@ -228,7 +298,7 @@ Cambiar una contraseña: `node scripts/generar-hash.js "nueva"` → actualizar l
 
 ## 🗺️ Mapa de páginas
 
-**Comensales:** `/` · `/vista` · `/m/[codigo]` (destino del QR) · `/rfid/[tag]` · `/mesa/[id]` (requiere código)
+**Comensales:** `/` · `/vista` · `/cuenta` (login, puntos y rangos) · `/m/[codigo]` (destino del QR) · `/rfid/[tag]` · `/mesa/[id]` (requiere código)
 **Staff (sin login):** `/dashboard` · `/cocina` · `/encargos` · `/reservas`
 **Admin (login en `/login`):** `/admin` · `/admin/carta` · `/admin/mesas` (QR y RFID) · `/admin/stock` · `/admin/mesas` · `/admin/sucursales` · `/admin/pagos` · `/admin/finanzas` · `/admin/cierre` · `/admin/integraciones` · `/admin/fidelidad` (creador) · `/admin/usuarios` · `/admin/tema` (creador)
 
