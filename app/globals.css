@@ -3509,3 +3509,147 @@ html[data-menu-theme="dark"] .mesa-detail__body {
   border-color: rgba(255,250,239,.14) !important;
 }
 html[data-menu-theme="dark"] .mesa-detail__price { color: var(--messa-accent-ink-dark, #e2c489) !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTRASTE — regla única: fondo claro ⇒ tinta oscura, fondo oscuro ⇒ tinta
+   clara. Vale para texto e iconos, en los dos temas.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Los paneles (AdminSheet) se montan con createPortal en <body>, FUERA de
+   `.admin-shell`. Los tokens del modo claro estaban definidos sólo sobre
+   `.admin-shell`, así que dentro del portal `--admin-text` seguía valiendo el
+   color claro del tema oscuro: botones con letra blanca sobre panel blanco,
+   ilegibles. Definirlos en el <html> los hace alcanzar también a los portales. */
+html[data-admin-theme="light"] {
+  --admin-bg: #f4f0e7;
+  --admin-bg-deep: #ebe5d8;
+  --admin-surface: rgba(255, 255, 255, .69);
+  --admin-surface-strong: rgba(248, 246, 241, .9);
+  --admin-border: rgba(33, 30, 23, .11);
+  --admin-text: #171714;
+  --admin-text-soft: #47443e;
+  --admin-text-muted: #5f594f;
+  --admin-shadow: 0 20px 46px rgba(68, 57, 39, .12);
+}
+
+/* Botones: cada tono declara fondo Y tinta juntos, para que nunca puedan
+   quedar desparejos según dónde se monte el componente. */
+html[data-admin-theme="light"] .messa-button--neutral {
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(29, 27, 23, .14);
+  color: #1d1b17;
+}
+html[data-admin-theme="light"] .messa-button--neutral:hover { background: #fff; }
+html[data-admin-theme="light"] .messa-button--quiet {
+  background: transparent;
+  border-color: transparent;
+  color: #4a453d;
+}
+html[data-admin-theme="light"] .messa-button--quiet:hover { background: rgba(29, 27, 23, .06); color: #1d1b17; }
+html[data-admin-theme="light"] .messa-button--danger {
+  background: rgba(169, 75, 69, .1);
+  border-color: rgba(169, 75, 69, .3);
+  color: #93392f;
+}
+html[data-admin-theme="light"] .messa-button--primary { color: #1f1a11; }
+/* El icono siempre acompaña a la letra del botón. */
+.messa-button svg { color: currentColor; }
+
+/* Píldoras de estado: en claro eran verde/ámbar pastel sobre blanco y no se
+   leían. Se oscurece la tinta y se refuerza el borde. */
+html[data-admin-theme="light"] .messa-status--green { background: rgba(45, 118, 76, .12); border-color: rgba(45, 118, 76, .28); color: #1f6340; }
+html[data-admin-theme="light"] .messa-status--amber { background: rgba(160, 105, 16, .13); border-color: rgba(160, 105, 16, .3); color: #7d4f08; }
+html[data-admin-theme="light"] .messa-status--rose { background: rgba(163, 58, 48, .11); border-color: rgba(163, 58, 48, .28); color: #8d2f27; }
+html[data-admin-theme="light"] .messa-status--blue { background: rgba(43, 92, 128, .12); border-color: rgba(43, 92, 128, .28); color: #234f70; }
+html[data-admin-theme="light"] .messa-status--gold { background: rgba(150, 110, 20, .14); border-color: rgba(150, 110, 20, .3); color: #6f5010; }
+html[data-admin-theme="light"] .messa-status--neutral { background: rgba(29, 27, 23, .07); border-color: rgba(29, 27, 23, .16); color: #3f3a33; }
+
+/* Campos y textos dentro de los paneles montados por portal. */
+html[data-admin-theme="light"] .messa-sheet {
+  background: linear-gradient(160deg, #fbf8f2, #f2ede3) !important;
+  color: #1d1b17;
+}
+html[data-admin-theme="light"] .messa-sheet :is(h2, h3, b, strong, label, dt) { color: #1d1b17; }
+html[data-admin-theme="light"] .messa-sheet :is(p, small, span, dd) { color: #4a453d; }
+html[data-admin-theme="light"] .messa-sheet .messa-kicker { color: #6b655c; }
+html[data-admin-theme="light"] .messa-sheet :is(input, textarea, select) { color: #1d1b17 !important; }
+html[data-admin-theme="light"] .messa-sheet :is(input, textarea)::placeholder { color: #8b8579 !important; }
+html[data-admin-theme="light"] .messa-sheet button svg { color: currentColor; }
+
+/* El dock: el elemento activo tiene fondo claro, así que su icono va oscuro.
+   Los inactivos se aclaran para que se distingan sobre el panel oscuro. */
+.admin-dock-link.active,
+.admin-dock-link.active svg { color: #211d16 !important; }
+.admin-dock-link { color: rgba(245, 240, 230, .74); }
+.admin-dock-link svg { color: currentColor; }
+html[data-admin-theme="light"] .admin-dock-link { color: #4a453d; }
+html[data-admin-theme="light"] .admin-dock-link:hover { color: #171714; }
+html[data-admin-theme="light"] .admin-dock-brand { color: #8a6512; }
+
+/* La píldora del rol se leía apenas sobre el fondo del panel. */
+.admin-topbar__role {
+  background: rgba(240, 217, 154, .16) !important;
+  border-color: rgba(240, 217, 154, .34) !important;
+  color: #f6e2ab !important;
+}
+html[data-admin-theme="light"] .admin-topbar__role {
+  background: rgba(150, 110, 20, .14) !important;
+  border-color: rgba(150, 110, 20, .32) !important;
+  color: #6f5010 !important;
+}
+
+/* Segmentados y filtros: el activo invierte fondo y tinta. */
+.messa-segmented button.active { background: #fffaf0; color: #1d1b17; }
+.messa-segmented button.active span { background: rgba(29, 27, 23, .12); color: #1d1b17; }
+html[data-admin-theme="light"] .messa-segmented button { color: #4a453d; }
+html[data-admin-theme="light"] .messa-segmented button.active { background: #191814; color: #faf7f0; }
+html[data-admin-theme="light"] .messa-segmented button.active span { background: rgba(255, 255, 255, .18); color: #faf7f0; }
+
+/* ── Imágenes que se montaban encima del texto ──────────────────────────────
+   Las tarjetas del panel usan `overflow: visible` para el efecto de foto
+   flotante. Sin un contexto de apilamiento propio, esa foto se dibujaba por
+   encima de la barra superior al desplazar la página, y por encima del texto
+   de la propia tarjeta. Se les da su propio contexto y se manda la barra
+   superior por delante de todo. */
+.messa-qr-card,
+.messa-admin-product,
+.dish-editorial-card {
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
+}
+.messa-qr-card__code img,
+.messa-admin-product__media,
+.dish-editorial-card__media-layer { z-index: 0; }
+.messa-qr-card__code,
+.messa-qr-card__value,
+.messa-qr-card__meta,
+.messa-qr-card__link,
+.messa-qr-card > header,
+.messa-qr-card > footer,
+.messa-admin-product__body,
+.dish-editorial-card__surface,
+.dish-editorial-card__body { position: relative; z-index: 1; }
+
+.admin-topbar { z-index: 400 !important; }
+.admin-quick-dock { position: relative; z-index: 350; }
+.admin-dock-stack { z-index: 401; }
+
+/* Cargador de imágenes: tenía los colores del tema oscuro escritos a mano en el
+   componente, así que en modo claro quedaba una caja negra con letra gris. */
+.messa-dropzone {
+  background: rgba(255, 250, 239, .05);
+  border: 2px dashed var(--admin-border);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  padding: 20px 14px;
+  text-align: center;
+  transition: border-color .18s ease, background .18s ease;
+}
+.messa-dropzone.is-dragging { background: color-mix(in srgb, var(--messa-accent) 12%, transparent); border-color: var(--messa-accent); }
+.messa-dropzone__icon { color: var(--messa-accent); margin-bottom: 6px; }
+.messa-dropzone__title { color: var(--admin-text); font-size: 13px; font-weight: 500; margin: 0; }
+.messa-dropzone__hint { color: var(--admin-text-muted); font-size: 11px; margin: 4px 0 0; }
+.messa-dropzone__note { color: var(--admin-text-muted); font-size: 10px; line-height: 1.5; margin: 8px 0 0; }
+.messa-dropzone__url { flex: 1; }
+html[data-admin-theme="light"] .messa-dropzone { background: rgba(255, 255, 255, .6); border-color: rgba(29, 27, 23, .16); }

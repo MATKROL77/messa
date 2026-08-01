@@ -65,7 +65,7 @@ export default function ImageUploader({ value, onChange }: { value: string; onCh
 
   return (
     <div>
-      <p style={{ margin: '0 0 8px', fontSize: 12, color: '#707070', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Imagen del plato</p>
+      <p className="messa-kicker" style={{ marginBottom: 8 }}>Imagen del plato</p>
 
       {value && (
         <div style={{ position: 'relative', height: 140, borderRadius: 12, overflow: 'hidden', marginBottom: 10, border: '1px solid #2A2A2A' }}>
@@ -80,19 +80,16 @@ export default function ImageUploader({ value, onChange }: { value: string; onCh
         onDragLeave={() => setArrastrando(false)}
         onDrop={e => { e.preventDefault(); setArrastrando(false); const f = e.dataTransfer.files?.[0]; if (f) procesarArchivo(f) }}
         onClick={() => !comprimiendo && inputFileRef.current?.click()}
-        style={{
-          border: `2px dashed ${arrastrando ? '#D4AF37' : '#2A2A2A'}`, borderRadius: 12, padding: '20px 14px',
-          textAlign: 'center', cursor: comprimiendo ? 'wait' : 'pointer', background: arrastrando ? 'rgba(212,175,55,0.06)' : '#1C1C1C',
-          transition: 'all 0.15s', marginBottom: 10
-        }}
+        className={`messa-dropzone${arrastrando ? ' is-dragging' : ''}`}
+        style={{ cursor: comprimiendo ? 'wait' : 'pointer' }}
       >
         {comprimiendo ? (
-          <p style={{ margin: 0, fontSize: 13, color: '#A0A0A0' }}>Comprimiendo imagen...</p>
+          <p className="messa-dropzone__hint">Comprimiendo imagen…</p>
         ) : (
           <>
-            <ImagePlus size={25} aria-hidden="true" style={{ color: '#c9a84f', marginBottom: 6 }} />
-            <p style={{ margin: 0, fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>Arrastrá una imagen acá o tocá para elegir</p>
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#707070' }}>Desde tu galería o cualquier carpeta · se comprime automáticamente</p>
+            <ImagePlus size={25} aria-hidden="true" className="messa-dropzone__icon" />
+            <p className="messa-dropzone__title">Arrastrá una imagen acá o tocá para elegir</p>
+            <p className="messa-dropzone__hint">Desde tu galería o cualquier carpeta · se comprime automáticamente</p>
           </>
         )}
         <input ref={inputFileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) procesarArchivo(f); e.target.value = '' }} style={{ display: 'none' }} />
@@ -106,11 +103,11 @@ export default function ImageUploader({ value, onChange }: { value: string; onCh
           onChange={e => setUrlTemp(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && urlTemp.trim()) { onChange(urlTemp.trim()); setPesoFinal(null); setUrlTemp('') } }}
           placeholder="O pegá cualquier URL de imagen (https://...)"
-          style={{ flex: 1, background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: '10px 14px', color: '#fff', fontSize: 13 }}
+          className="input-premium messa-dropzone__url" 
         />
-        <button type="button" onClick={() => { if (urlTemp.trim()) { onChange(urlTemp.trim()); setPesoFinal(null); setUrlTemp('') } }} style={{ padding: '8px 16px', borderRadius: 10, background: '#2A2A2A', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>Usar URL</button>
+        <button type="button" onClick={() => { if (urlTemp.trim()) { onChange(urlTemp.trim()); setPesoFinal(null); setUrlTemp('') } }} className="messa-button messa-button--neutral">Usar URL</button>
       </div>
-      <p style={{ margin: '8px 0 0', fontSize: 10, color: '#484848', lineHeight: 1.5 }}>Nota: las fotos comprimidas se guardan en el almacenamiento local del navegador. Para muchos platos con fotos propias, lo ideal a futuro es conectar Supabase Storage o R2 (ver LEEME.md).</p>
+      <p className="messa-dropzone__note">Nota: las fotos comprimidas se guardan en el almacenamiento local del navegador. Para muchos platos con fotos propias, lo ideal a futuro es conectar Supabase Storage o R2 (ver LEEME.md).</p>
     </div>
   )
 }
