@@ -500,9 +500,12 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
 
       {platoActivo && (
         <div className="overlay mesa-detail-overlay" onClick={e => { if (e.target === e.currentTarget) setPlatoActivo(null) }} style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex' }}>
+          {/* El botón de cerrar vive fuera del panel: el panel es el contenedor
+              que scrollea, y cualquier hijo suyo quedaría recortado por ese
+              overflow al desplazarse. */}
+          <button type="button" className="mesa-detail-close" onClick={() => setPlatoActivo(null)} aria-label="Cerrar detalle"><X size={19} /></button>
           <div className="slide-up mesa-detail-panel">
             <DetalleContent plato={platoActivo} ingRemovidos={ingRemovidos} toggleIng={toggleIng} modsElegidos={modsElegidos} toggleModificador={toggleModificador} notas={notas} setNotas={setNotas} mostrarNutri={mostrarNutri} setMostrarNutri={setMostrarNutri} mostrarReviews={mostrarReviews} setMostrarReviews={setMostrarReviews} onAgregar={() => handleAgregarAlCarrito(platoActivo)} onMaridar={(maridaje: Maridaje) => { const producto = platos.find(item => item.id === maridaje.plato_id); if (producto) { agregarAlCarrito(producto, [], ''); showToast(`${maridaje.nombre} agregado`) } }} esPostPago={esPostPago} mostrarNutricion={config.mostrar_nutricion} />
-            <button type="button" className="mesa-detail-close" onClick={() => setPlatoActivo(null)} aria-label="Cerrar detalle"><X size={19} /></button>
           </div>
         </div>
       )}
@@ -572,14 +575,13 @@ function DetalleContent({ plato, ingRemovidos, toggleIng, modsElegidos, toggleMo
     .reduce((total: number, opcion: Plato['modificadores'][number]['opciones'][number]) => total + opcion.precio_extra, 0)
   return (
     <>
-      <div style={{ position: 'relative', height: 240, flexShrink: 0 }}>
+      <div className="mesa-detail__media">
         <DishMedia plato={plato} variant="hero" />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #141414 0%, transparent 60%)', borderRadius: '20px 20px 0 0' }} />
       </div>
-      <div style={{ padding: '16px 20px 32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-          <h2 className="font-titulos" style={{ margin: 0, fontSize: 22, fontWeight: 700, flex: 1, paddingRight: 12, lineHeight: 1.2 }}>{plato.nombre}</h2>
-          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--gold)' }}>{formatPrecioCarta(plato.precio, plato.precio_pendiente)}</span>
+      <div className="mesa-detail__body">
+        <div className="mesa-detail__heading">
+          <h2 className="font-titulos">{plato.nombre}</h2>
+          <span className="mesa-detail__price">{formatPrecioCarta(plato.precio, plato.precio_pendiente)}</span>
         </div>
         <button onClick={() => setMostrarReviews(!mostrarReviews)} style={{ display: 'flex', gap: 8, marginBottom: 12, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
           <span style={{ alignItems: 'center', color: 'var(--gold)', display: 'inline-flex', fontSize: 13, gap: 4 }}><Star size={14} fill="currentColor" /> {plato.rating}</span>
