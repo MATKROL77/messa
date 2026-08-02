@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LogOut, MapPinned, Package, PackageSearch, Palette, QrCode, ReceiptText, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
+import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LockKeyhole, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
 import { useStore, type PermisoAdmin } from '@/lib/store'
 import type { RolUsuario } from '@/types'
 import MessaWordmark from '@/components/messa-wordmark'
@@ -42,8 +42,7 @@ type DockItem = { href: string; label: string; Icon: typeof LayoutDashboard; exa
 const OPERACION: DockItem[] = [
   { href: '/admin', label: 'Resumen', Icon: LayoutDashboard, exact: true },
   { href: '/admin/carta', label: 'Carta', Icon: UtensilsCrossed },
-  { href: '/dashboard', label: 'Salón', Icon: MapPinned, exact: true },
-  { href: '/admin/mesas', label: 'Mesas y QR', Icon: QrCode },
+  { href: '/dashboard', label: 'Salón y mesas', Icon: MapPinned, exact: true },
   { href: '/cocina', label: 'Ver pedidos', Icon: ChefHat, exact: true },
   { href: '/admin/stock', label: 'Inventario', Icon: Package },
   { href: '/reservas', label: 'Reservas', Icon: CalendarDays, exact: true },
@@ -92,6 +91,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [verificando, setVerificando] = useState(true)
   const [sucursalesAbiertas, setSucursalesAbiertas] = useState(false)
   const [alertasAbiertas, setAlertasAbiertas] = useState(false)
+  // Cambiar de sucursal pide un código. Queda pendiente hasta que el servidor
+  // lo valide: la comprobación no puede vivir en el navegador porque el código
+  // sería legible con las herramientas de desarrollo.
+  const [sucursalPendiente, setSucursalPendiente] = useState<{ id: string; nombre: string } | null>(null)
+  const [codigoSucursal, setCodigoSucursal] = useState('')
+  const [errorSucursal, setErrorSucursal] = useState('')
+  const [validandoSucursal, setValidandoSucursal] = useState(false)
+
+  const confirmarCambioDeSucursal = async () => {
+    if (!sucursalPendiente) return
+    setValidandoSucursal(true)
+    setErrorSucursal('')
+    try {
+      const res = await fetch(withBasePath('/api/sucursal/cambio'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: codigoSucursal }),
+      })
+      const datos = await res.json().catch(() => ({})) as { ok?: boolean; error?: string }
+      if (!res.ok || !datos.ok) {
+        setErrorSucursal(datos.error || 'No pudimos validar el código.')
+        return
+      }
+      setSucursalActual(sucursalPendiente.id)
+      setSucursalPendiente(null)
+      setCodigoSucursal('')
+    } catch {
+      setErrorSucursal('No pudimos conectarnos con el servidor.')
+    } finally {
+      setValidandoSucursal(false)
+    }
+  }
 
   useEffect(() => {
     initStore()
@@ -175,7 +206,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="admin-topbar__role" style={{ color: ROL_LABEL[sesionAdmin.rol].color }}>{ROL_LABEL[sesionAdmin.rol].label}</span>
             {puedeCambiarSucursal && sucursales.length > 1 && <div className="admin-popover-control">
               <button type="button" className="admin-branch-control" onClick={() => { setSucursalesAbiertas(value => !value); setAlertasAbiertas(false) }} aria-haspopup="menu" aria-expanded={sucursalesAbiertas}><Store size={15} aria-hidden="true" /><span>{sucursalActual?.nombre || 'Sucursal'}</span><ChevronDown size={13} aria-hidden="true" /></button>
-              {sucursalesAbiertas && <div className="admin-topbar-popover admin-branch-menu" role="menu" aria-label="Elegir sucursal">{sucursales.map(sucursal => <button type="button" role="menuitem" key={sucursal.id} className={sucursal.id === sucursalActualId ? 'active' : ''} onClick={() => { setSucursalActual(sucursal.id); setSucursalesAbiertas(false) }}><span><b>{sucursal.nombre}</b><small>{sucursal.direccion || 'Sucursal MESSA'}</small></span>{sucursal.id === sucursalActualId && <Check size={15} />}</button>)}</div>}
+              {sucursalesAbiertas && <div className="admin-topbar-popover admin-branch-menu" role="menu" aria-label="Elegir sucursal">{sucursales.map(sucursal => <button type="button" role="menuitem" key={sucursal.id} className={sucursal.id === sucursalActualId ? 'active' : ''} onClick={() => { setSucursalesAbiertas(false); if (sucursal.id === sucursalActualId) return; setErrorSucursal(''); setCodigoSucursal(''); setSucursalPendiente({ id: sucursal.id, nombre: sucursal.nombre }) }}><span><b>{sucursal.nombre}</b><small>{sucursal.direccion || 'Sucursal MESSA'}</small></span>{sucursal.id === sucursalActualId && <Check size={15} />}</button>)}</div>}
             </div>}
             <div className="admin-popover-control">
               <button type="button" className="admin-alert-button" onClick={() => { setAlertasAbiertas(value => !value); setSucursalesAbiertas(false) }} aria-label="Abrir notificaciones" aria-haspopup="dialog" aria-expanded={alertasAbiertas}><Bell size={17} />{alertasPendientes.length > 0 && <span>{alertasPendientes.length}</span>}</button>
@@ -214,6 +245,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="admin-content" key={pathname}>{children}</div>
         </div>
       </main>
+
+      {sucursalPendiente && (
+        <div className="admin-code-backdrop" role="dialog" aria-modal="true" aria-labelledby="titulo-codigo-sucursal">
+          <form
+            className="admin-code-card"
+            onSubmit={event => { event.preventDefault(); void confirmarCambioDeSucursal() }}
+          >
+            <span className="admin-code-card__icon"><LockKeyhole size={20} aria-hidden="true" /></span>
+            <p className="messa-kicker">Cambio de sucursal</p>
+            <h2 id="titulo-codigo-sucursal">Pasás a {sucursalPendiente.nombre}</h2>
+            <p className="admin-code-card__detail">
+              Todo el panel —mesas, pedidos, caja e inventario— pasa a esa sucursal.
+              Escribí el código para confirmar.
+            </p>
+            <input
+              className="admin-code-card__input"
+              value={codigoSucursal}
+              onChange={event => setCodigoSucursal(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="••••"
+              aria-label="Código de cambio de sucursal"
+              autoFocus
+            />
+            {errorSucursal && <p className="admin-code-card__error" role="alert">{errorSucursal}</p>}
+            <div className="admin-code-card__actions">
+              <button type="button" className="messa-button messa-button--quiet" onClick={() => { setSucursalPendiente(null); setCodigoSucursal(''); setErrorSucursal('') }}>Cancelar</button>
+              <button type="submit" className="messa-button messa-button--primary" disabled={validandoSucursal || codigoSucursal.length < 4}>
+                {validandoSucursal ? 'Verificando…' : 'Confirmar'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

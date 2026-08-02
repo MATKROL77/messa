@@ -4331,3 +4331,666 @@ html[data-menu-theme="dark"] .filter-option { background: rgba(255, 250, 239, .0
 .menu-page--readonly .menu-feedback-toast { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
 @keyframes menu-toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .menu-feedback-toast.fade-in { animation: menu-toast-in .24s var(--messa-ease) both; }
+
+/* ══════════════════════════════════════════════════════════════
+   SALÓN — un solo panel: plano editable, mesas, QR y llamados.
+   Antes esto vivía repartido entre /dashboard y /admin/mesas.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Tira de estado: reemplaza las cuatro tarjetas grandes ──
+   La misma información en una línea, para que el plano sea el protagonista
+   de la pantalla y no un cuarto elemento más abajo. */
+.messa-salon-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.messa-salon-chip {
+  align-items: baseline;
+  background: rgba(255, 250, 239, .05);
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  color: var(--admin-text-muted);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 7px;
+  padding: 8px 15px;
+}
+.messa-salon-chip b { color: var(--admin-text); font-size: 15px; font-weight: 650; }
+.messa-salon-chip--green b { color: #6fc79b; }
+.messa-salon-chip--rose b { color: #e79b93; }
+.messa-salon-chip--amber b { color: #e2c579; }
+.messa-salon-chip--blue b { color: #94b9db; }
+html[data-admin-theme="light"] .messa-salon-chip { background: #fff; border-color: rgba(29, 27, 23, .1); }
+html[data-admin-theme="light"] .messa-salon-chip--green b { color: #1f6340; }
+html[data-admin-theme="light"] .messa-salon-chip--rose b { color: #a33f34; }
+html[data-admin-theme="light"] .messa-salon-chip--amber b { color: #8a6a1f; }
+html[data-admin-theme="light"] .messa-salon-chip--blue b { color: #2f5f88; }
+
+/* ── El plano ──
+   Todo se posiciona en porcentajes, así el mismo salón se ve igual en la
+   tablet del mozo y en el monitor de la caja. */
+.messa-plano {
+  aspect-ratio: 16 / 10;
+  background:
+    linear-gradient(rgba(255, 250, 239, .035) 1px, transparent 1px) 0 0 / 100% 5%,
+    linear-gradient(90deg, rgba(255, 250, 239, .035) 1px, transparent 1px) 0 0 / 5% 100%,
+    rgba(0, 0, 0, .18);
+  border: 1px solid var(--admin-border);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  touch-action: none; /* sin esto el navegador toma el arrastre como scroll */
+  width: 100%;
+}
+html[data-admin-theme="light"] .messa-plano {
+  background:
+    linear-gradient(rgba(29, 27, 23, .05) 1px, transparent 1px) 0 0 / 100% 5%,
+    linear-gradient(90deg, rgba(29, 27, 23, .05) 1px, transparent 1px) 0 0 / 5% 100%,
+    #fdfcf8;
+}
+.messa-plano.is-editing { border-color: color-mix(in srgb, var(--messa-accent) 45%, transparent); cursor: crosshair; }
+.messa-plano__vacio {
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  left: 50%;
+  margin: 0;
+  position: absolute;
+  text-align: center;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(80%, 320px);
+}
+
+/* Mesas */
+.messa-plano__mesa {
+  /* El alto lo decide la proporción de la forma, no un porcentaje aparte: si
+     ancho y alto fueran los dos % del lienzo (que es 16:10), toda mesa
+     "redonda" se dibujaría como un óvalo. */
+  aspect-ratio: 1;
+  min-width: 42px;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.messa-plano__mesa.is-rectangular { aspect-ratio: 1.7; }
+.messa-plano__mesa-boton {
+  align-items: center;
+  background: var(--mesa-fondo, rgba(255, 250, 239, .1));
+  border: 1.5px solid var(--mesa-borde, rgba(255, 250, 239, .22));
+  border-radius: 12px;
+  color: var(--mesa-tinta, #f7f2e8);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  height: 100%;
+  justify-content: center;
+  line-height: 1.1;
+  padding: 4px;
+  transition: transform .16s var(--messa-ease), box-shadow .16s var(--messa-ease);
+  width: 100%;
+}
+.messa-plano__mesa-boton b { font-size: clamp(10px, 1.5vw, 13px); font-weight: 650; }
+.messa-plano__mesa-boton small { font-size: clamp(8px, 1.1vw, 10px); opacity: .72; }
+.messa-plano__mesa.is-redonda .messa-plano__mesa-boton { border-radius: 50%; }
+.messa-plano__mesa.is-rectangular .messa-plano__mesa-boton { border-radius: 10px; }
+.messa-plano__mesa-boton:hover { transform: scale(1.04); }
+.messa-plano__mesa.is-selected .messa-plano__mesa-boton {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--messa-accent) 55%, transparent);
+}
+/* Cada estado declara fondo, borde y tinta juntos: no se puede cambiar el
+   fondo sin decidir con qué color se lee encima. */
+.messa-plano__mesa.is-libre { --mesa-fondo: rgba(111, 199, 155, .16); --mesa-borde: rgba(111, 199, 155, .5); --mesa-tinta: #a8e3c4; }
+.messa-plano__mesa.is-ocupada { --mesa-fondo: rgba(231, 155, 147, .18); --mesa-borde: rgba(231, 155, 147, .52); --mesa-tinta: #f3bcb5; }
+.messa-plano__mesa.is-pedido { --mesa-fondo: rgba(226, 197, 121, .2); --mesa-borde: rgba(226, 197, 121, .55); --mesa-tinta: #f0dda6; }
+.messa-plano__mesa.is-pagando { --mesa-fondo: rgba(198, 154, 63, .22); --mesa-borde: rgba(198, 154, 63, .6); --mesa-tinta: #f0dda6; }
+.messa-plano__mesa.is-pagada { --mesa-fondo: rgba(148, 185, 219, .18); --mesa-borde: rgba(148, 185, 219, .52); --mesa-tinta: #bcd7ef; }
+html[data-admin-theme="light"] .messa-plano__mesa.is-libre { --mesa-fondo: #e4f3ea; --mesa-borde: #7cb99a; --mesa-tinta: #1c5a3c; }
+html[data-admin-theme="light"] .messa-plano__mesa.is-ocupada { --mesa-fondo: #fbe8e5; --mesa-borde: #d79288; --mesa-tinta: #8f342a; }
+html[data-admin-theme="light"] .messa-plano__mesa.is-pedido { --mesa-fondo: #faf0d8; --mesa-borde: #d3b264; --mesa-tinta: #7a5c17; }
+html[data-admin-theme="light"] .messa-plano__mesa.is-pagando { --mesa-fondo: #f7ebcf; --mesa-borde: #c69a3f; --mesa-tinta: #6f5313; }
+html[data-admin-theme="light"] .messa-plano__mesa.is-pagada { --mesa-fondo: #e5eff8; --mesa-borde: #8ab0d4; --mesa-tinta: #27506f; }
+
+/* Paredes, barras, columnas, puertas, plantas y carteles */
+.messa-plano__elemento { position: absolute; }
+.messa-plano__elemento--pared { background: rgba(255, 250, 239, .22); border-radius: 3px; }
+.messa-plano__elemento--barra { background: rgba(198, 154, 63, .2); border: 1px solid rgba(198, 154, 63, .42); border-radius: 8px; }
+.messa-plano__elemento--columna { background: rgba(255, 250, 239, .16); border-radius: 6px; }
+.messa-plano__elemento--puerta { background: transparent; border-bottom: 3px dashed rgba(148, 185, 219, .75); }
+.messa-plano__elemento--planta { background: rgba(111, 199, 155, .2); border: 1px solid rgba(111, 199, 155, .4); border-radius: 50%; }
+.messa-plano__elemento--etiqueta {
+  align-items: center;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+}
+.messa-plano__elemento--etiqueta span {
+  color: var(--admin-text-muted);
+  font-size: clamp(9px, 1.3vw, 12px);
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+html[data-admin-theme="light"] .messa-plano__elemento--pared { background: rgba(29, 27, 23, .3); }
+html[data-admin-theme="light"] .messa-plano__elemento--columna { background: rgba(29, 27, 23, .18); }
+.messa-plano__elemento.is-selected { box-shadow: 0 0 0 2px color-mix(in srgb, var(--messa-accent) 60%, transparent); }
+.messa-plano.is-editing .messa-plano__elemento,
+.messa-plano.is-editing .messa-plano__mesa { cursor: grab; }
+
+/* El tirador de tamaño. Sólo aparece en modo edición, así el mozo no puede
+   deformar el salón sin querer durante el servicio. */
+.messa-plano__handle {
+  background: var(--messa-accent);
+  border: 2px solid #fffaf0;
+  border-radius: 50%;
+  bottom: -7px;
+  cursor: nwse-resize;
+  height: 16px;
+  padding: 0;
+  position: absolute;
+  right: -7px;
+  width: 16px;
+  z-index: 3;
+}
+
+/* ── Barra de herramientas del plano ── */
+.messa-plano-toolbar {
+  align-items: center;
+  background: rgba(255, 250, 239, .04);
+  border: 1px solid var(--admin-border);
+  border-radius: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+}
+html[data-admin-theme="light"] .messa-plano-toolbar { background: #fff; border-color: rgba(29, 27, 23, .1); }
+.messa-plano-toolbar__group { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
+.messa-plano-toolbar__group > span {
+  color: var(--admin-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  margin-right: 2px;
+  text-transform: uppercase;
+}
+.messa-plano-toolbar button {
+  align-items: center;
+  background: rgba(255, 250, 239, .07);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 11px;
+}
+.messa-plano-toolbar button:hover { border-color: color-mix(in srgb, var(--messa-accent) 45%, transparent); }
+.messa-plano-toolbar button svg { color: currentColor; }
+.messa-plano-toolbar button.is-danger { background: rgba(192, 89, 78, .14); border-color: rgba(211, 116, 105, .3); color: #e79b93; }
+.messa-plano-toolbar input {
+  background: rgba(255, 250, 239, .07);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text);
+  font-size: 12px;
+  min-height: 34px;
+  padding: 0 11px;
+  width: 150px;
+}
+html[data-admin-theme="light"] .messa-plano-toolbar :is(button, input) { background: #fdfcf8; color: #1d1b17; }
+html[data-admin-theme="light"] .messa-plano-toolbar button.is-danger { background: rgba(178, 60, 48, .1); color: #9e3125; }
+
+/* ── Ficha de la mesa: una tarjeta por tema, para poder distinguirlas ── */
+.messa-mesa-sheet { display: grid; gap: 12px; }
+.messa-mesa-card {
+  background: rgba(255, 250, 239, .04);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+}
+html[data-admin-theme="light"] .messa-mesa-card { background: #fff; border-color: rgba(29, 27, 23, .09); }
+.messa-mesa-card--reservada { border-color: color-mix(in srgb, var(--messa-accent) 45%, transparent); }
+.messa-mesa-card > header { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+.messa-mesa-card > header > span {
+  align-items: center;
+  color: var(--admin-text);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 6px;
+}
+.messa-mesa-card > header svg { color: var(--messa-accent); }
+.messa-mesa-vacio { color: var(--admin-text-muted); font-size: 12px; margin: 0; }
+
+.messa-mesa-card__stepper { align-items: center; display: grid; gap: 4px 14px; grid-template-columns: 1fr auto; }
+.messa-mesa-card__stepper > span { color: var(--admin-text-muted); font-size: 12px; }
+.messa-mesa-card__stepper > small { color: var(--admin-text-muted); font-size: 11px; }
+.messa-mesa-card__stepper > div {
+  align-items: center;
+  background: rgba(255, 250, 239, .07);
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 4px;
+  grid-row: span 2;
+  padding: 4px;
+}
+.messa-mesa-card__stepper button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--admin-text);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+.messa-mesa-card__stepper button:hover { background: rgba(255, 250, 239, .12); }
+.messa-mesa-card__stepper b { font-size: 17px; min-width: 26px; text-align: center; }
+html[data-admin-theme="light"] .messa-mesa-card__stepper > div { background: #f7f4ee; }
+html[data-admin-theme="light"] .messa-mesa-card__stepper button:hover { background: rgba(29, 27, 23, .07); }
+
+.messa-mesa-card__pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.messa-mesa-card__pills span {
+  align-items: center;
+  background: rgba(255, 250, 239, .06);
+  border-radius: 999px;
+  color: var(--admin-text-muted);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 5px;
+  padding: 6px 11px;
+}
+html[data-admin-theme="light"] .messa-mesa-card__pills span { background: #f4f1ea; }
+
+.messa-mesa-field { display: grid; gap: 6px; }
+.messa-mesa-field > span { align-items: center; color: var(--admin-text-muted); display: flex; font-size: 11px; font-weight: 600; gap: 5px; }
+.messa-mesa-field :is(input, select) {
+  background: rgba(255, 250, 239, .06);
+  border: 1px solid var(--admin-border);
+  border-radius: 11px;
+  color: var(--admin-text);
+  font-size: 13px;
+  min-height: 42px;
+  padding: 0 12px;
+  width: 100%;
+}
+html[data-admin-theme="light"] .messa-mesa-field :is(input, select) { background: #fdfcf8; color: #1d1b17; }
+.messa-mesa-grid-2 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+
+.messa-mesa-nota textarea {
+  background: rgba(255, 250, 239, .06);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  color: var(--admin-text);
+  font-size: 13px;
+  padding: 11px;
+  resize: vertical;
+  width: 100%;
+}
+.messa-mesa-nota > div { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.messa-mesa-nota__preview {
+  background: rgba(255, 250, 239, .05);
+  border: 1px dashed var(--admin-border);
+  border-radius: 12px;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: 12.5px;
+  min-height: 46px;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+html[data-admin-theme="light"] .messa-mesa-nota :is(textarea, .messa-mesa-nota__preview) { background: #fdfcf8; color: #1d1b17; }
+html[data-admin-theme="light"] .messa-mesa-nota__preview { color: #6c6559; }
+
+.messa-mesa-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.messa-mesa-pedidos { display: grid; gap: 8px; }
+.messa-mesa-pedidos article { border: 1px solid var(--admin-border); border-radius: 13px; padding: 11px; }
+.messa-mesa-pedidos header { align-items: center; display: flex; justify-content: space-between; margin-bottom: 6px; }
+.messa-mesa-pedidos b { color: var(--admin-text); font-size: 12px; }
+.messa-mesa-pedidos p { color: var(--admin-text-muted); font-size: 12px; margin: 2px 0; }
+
+.messa-mesa-traslado p { color: var(--admin-text-muted); font-size: 12px; margin: 0 0 8px; }
+.messa-mesa-traslado > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.messa-mesa-traslado button {
+  background: rgba(255, 250, 239, .07);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text);
+  cursor: pointer;
+  font-size: 12px;
+  min-height: 36px;
+  padding: 0 13px;
+}
+.messa-mesa-traslado span { color: var(--admin-text-muted); font-size: 12px; }
+
+.messa-mesa-reservas { display: grid; gap: 8px; }
+.messa-mesa-reservas article, .messa-mesa-reservas--libres button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  border-radius: 13px;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 11px;
+  text-align: left;
+  width: 100%;
+}
+.messa-mesa-reservas b { color: var(--admin-text); display: block; font-size: 12.5px; }
+.messa-mesa-reservas small { color: var(--admin-text-muted); font-size: 11px; }
+.messa-mesa-reservas article button {
+  background: transparent;
+  border: 0;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.messa-mesa-qr { align-items: center; display: grid; gap: 14px; grid-template-columns: 104px minmax(0, 1fr); }
+.messa-mesa-qr img { background: #fff; border-radius: 12px; padding: 6px; width: 100%; }
+.messa-mesa-qr__placeholder {
+  align-items: center;
+  aspect-ratio: 1;
+  background: rgba(255, 250, 239, .05);
+  border-radius: 12px;
+  color: var(--admin-text-muted);
+  display: flex;
+  font-size: 11px;
+  justify-content: center;
+}
+.messa-mesa-qr > div { display: grid; gap: 8px; }
+.messa-mesa-qr b { color: var(--admin-text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; letter-spacing: .08em; }
+.messa-mesa-qr small { color: var(--admin-text-muted); font-size: 11px; line-height: 1.45; }
+.messa-mesa-aviso {
+  background: rgba(192, 89, 78, .12);
+  border-radius: 10px;
+  color: #e79b93;
+  font-size: 11.5px;
+  margin: 0;
+  padding: 9px 11px;
+}
+html[data-admin-theme="light"] .messa-mesa-aviso { color: #9e3125; }
+
+/* Hoja con todos los QR juntos */
+.messa-qr-sheet { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.messa-qr-sheet article {
+  border: 1px solid var(--admin-border);
+  border-radius: 16px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 13px;
+  text-align: center;
+}
+.messa-qr-sheet img { background: #fff; border-radius: 10px; padding: 6px; width: 100%; }
+.messa-qr-sheet b { color: var(--admin-text); font-size: 13px; }
+.messa-qr-sheet small { color: var(--admin-text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: .06em; }
+
+/* Llamados */
+.messa-llamados { display: grid; gap: 10px; }
+.messa-llamados article {
+  align-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 13px;
+}
+.messa-llamados article.is-attended { opacity: .55; }
+.messa-llamados b { color: var(--admin-text); display: block; font-size: 13px; }
+.messa-llamados span { color: var(--admin-text-muted); font-size: 12.5px; }
+.messa-llamados small { align-items: center; color: var(--admin-text-muted); display: inline-flex; font-size: 11px; gap: 4px; margin-top: 3px; }
+
+/* Transferencias pendientes */
+.messa-transfer-list { display: grid; gap: 9px; }
+.messa-transfer-list article {
+  align-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 11px 13px;
+}
+.messa-transfer-list b { color: var(--admin-text); display: block; font-size: 13px; }
+.messa-transfer-list small { color: var(--admin-text-muted); font-size: 12px; }
+
+/* Banderitas de la tarjeta de mesa en la vista de lista */
+.messa-table-card__flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.messa-table-card__flags em {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent) 14%, transparent);
+  border-radius: 999px;
+  color: var(--messa-accent-ink, #8a6a1f);
+  display: inline-flex;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 650;
+  gap: 4px;
+  padding: 4px 9px;
+}
+html[data-admin-theme="dark"] .messa-table-card__flags em { color: var(--messa-accent-ink-dark, #e8c979); }
+
+@media (max-width: 720px) {
+  .messa-plano { aspect-ratio: 4 / 5; }
+  .messa-mesa-grid-2 { grid-template-columns: 1fr; }
+  .messa-mesa-qr { grid-template-columns: 1fr; justify-items: start; }
+  .messa-mesa-qr img { max-width: 160px; }
+  .messa-plano-toolbar { gap: 8px; }
+  .messa-plano-toolbar input { width: 100%; }
+}
+
+/* ── Código para cambiar de sucursal ── */
+.admin-code-backdrop {
+  align-items: center;
+  backdrop-filter: blur(12px);
+  background: rgba(12, 11, 9, .62);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 800;
+}
+.admin-code-card {
+  background: var(--admin-surface, #23211c);
+  border: 1px solid var(--admin-border);
+  border-radius: 24px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .45);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  max-width: 380px;
+  padding: 26px 24px 22px;
+  text-align: center;
+  width: 100%;
+}
+html[data-admin-theme="light"] .admin-code-card { background: #fffdf9; border-color: rgba(29, 27, 23, .1); }
+.admin-code-card__icon {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent) 16%, transparent);
+  border-radius: 16px;
+  color: var(--messa-accent-ink, #8a6a1f);
+  display: inline-flex;
+  height: 46px;
+  justify-content: center;
+  width: 46px;
+}
+html[data-admin-theme="dark"] .admin-code-card__icon { color: var(--messa-accent-ink-dark, #e8c979); }
+.admin-code-card h2 { color: var(--admin-text); font-size: 19px; letter-spacing: -.02em; margin: 0; }
+.admin-code-card__detail { color: var(--admin-text-muted); font-size: 12.5px; line-height: 1.55; margin: 0; }
+.admin-code-card__input {
+  background: rgba(255, 250, 239, .07);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  color: var(--admin-text);
+  font-size: 26px;
+  letter-spacing: .35em;
+  margin-top: 6px;
+  min-height: 58px;
+  padding: 0 14px;
+  text-align: center;
+  width: 100%;
+}
+html[data-admin-theme="light"] .admin-code-card__input { background: #f7f4ee; color: #1d1b17; }
+.admin-code-card__error { color: #e79b93; font-size: 12px; margin: 0; }
+html[data-admin-theme="light"] .admin-code-card__error { color: #9e3125; }
+.admin-code-card__actions { display: flex; gap: 8px; justify-content: center; margin-top: 6px; width: 100%; }
+.admin-code-card__actions .messa-button { flex: 1; justify-content: center; }
+
+/* ══════════════════════════════════════════════════════════════
+   Interruptores estilo Apple.
+   Las casillas cuadradas del navegador desentonaban con el resto
+   del panel y, en oscuro, un cuadradito con un tilde apenas se
+   distinguía de uno vacío. Ahora son switches: se entiende si
+   están encendidos por la posición, no sólo por el color.
+   ══════════════════════════════════════════════════════════════ */
+.messa-switch-row input[type="checkbox"],
+.messa-form-stack input[type="checkbox"],
+.messa-form-grid input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 250, 239, .16);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  height: 30px;
+  margin: 0;
+  position: relative;
+  transition: background .22s var(--messa-ease);
+  width: 50px;
+}
+.messa-switch-row input[type="checkbox"]::after,
+.messa-form-stack input[type="checkbox"]::after,
+.messa-form-grid input[type="checkbox"]::after {
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  content: '';
+  height: 24px;
+  left: 3px;
+  position: absolute;
+  top: 3px;
+  transition: transform .22s var(--messa-ease);
+  width: 24px;
+}
+.messa-switch-row input[type="checkbox"]:checked,
+.messa-form-stack input[type="checkbox"]:checked,
+.messa-form-grid input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, #efd88f, #c69a3f);
+}
+.messa-switch-row input[type="checkbox"]:checked::after,
+.messa-form-stack input[type="checkbox"]:checked::after,
+.messa-form-grid input[type="checkbox"]:checked::after {
+  transform: translateX(20px);
+}
+.messa-switch-row input[type="checkbox"]:focus-visible,
+.messa-form-stack input[type="checkbox"]:focus-visible,
+.messa-form-grid input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--messa-accent);
+  outline-offset: 3px;
+}
+html[data-admin-theme="light"] :is(.messa-switch-row, .messa-form-stack, .messa-form-grid) input[type="checkbox"] {
+  background: rgba(29, 27, 23, .18);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.messa-switch-row, .messa-form-stack, .messa-form-grid) input[type="checkbox"],
+  :is(.messa-switch-row, .messa-form-stack, .messa-form-grid) input[type="checkbox"]::after { transition: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOVIMIENTO — que el panel se sienta una app de iPhone.
+   Todo usa la curva de iOS (0.32, 0.72, 0, 1): arranca rápido y
+   frena suave, nunca rebota. Y todo respeta
+   `prefers-reduced-motion`, que en iOS es un interruptor real de
+   Ajustes y hay gente que lo necesita.
+   ══════════════════════════════════════════════════════════════ */
+:root { --ios-ease: cubic-bezier(.32, .72, 0, 1); }
+
+/* Las hojas suben desde abajo como las de iOS, con el fondo atenuándose. */
+@keyframes messa-sheet-rise { from { opacity: 0; transform: translateY(26px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes messa-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes messa-card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes messa-pop-in { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+
+.messa-sheet, .admin-code-card { animation: messa-sheet-rise .34s var(--ios-ease) both; }
+.messa-sheet-layer, .admin-code-backdrop { animation: messa-fade-in .2s ease both; }
+
+/* Las tarjetas de la ficha entran escalonadas, como una lista de Ajustes.
+   El retraso es mínimo: lo justo para que se lea el orden, no para hacer
+   esperar a un mozo que necesita cobrar. */
+.messa-mesa-sheet > * { animation: messa-card-in .26s var(--ios-ease) both; }
+.messa-mesa-sheet > *:nth-child(1) { animation-delay: .02s; }
+.messa-mesa-sheet > *:nth-child(2) { animation-delay: .05s; }
+.messa-mesa-sheet > *:nth-child(3) { animation-delay: .08s; }
+.messa-mesa-sheet > *:nth-child(4) { animation-delay: .11s; }
+.messa-mesa-sheet > *:nth-child(5) { animation-delay: .13s; }
+.messa-mesa-sheet > *:nth-child(n+6) { animation-delay: .15s; }
+
+.messa-salon-chip { animation: messa-pop-in .3s var(--ios-ease) both; }
+.messa-salon-chip:nth-child(2) { animation-delay: .04s; }
+.messa-salon-chip:nth-child(3) { animation-delay: .08s; }
+.messa-salon-chip:nth-child(4) { animation-delay: .12s; }
+
+.messa-qr-sheet article, .messa-llamados article, .messa-transfer-list article { animation: messa-card-in .28s var(--ios-ease) both; }
+
+/* Las mesas del plano aparecen y responden al toque con la misma física que
+   un icono de iOS: se hunden un poco al presionar y vuelven. */
+.messa-plano__mesa { animation: messa-pop-in .3s var(--ios-ease) both; }
+.messa-plano__mesa-boton:active { transform: scale(.94); }
+.messa-plano__mesa-boton { transition: transform .18s var(--ios-ease), box-shadow .18s var(--ios-ease); }
+.messa-table-card, .messa-button, .admin-shortcut { transition: transform .18s var(--ios-ease), box-shadow .18s var(--ios-ease), background .18s var(--ios-ease), border-color .18s var(--ios-ease); }
+.messa-table-card:active, .messa-button:active { transform: scale(.975); }
+
+/* El estado de una mesa cambia solo cuando el comensal pide o paga: un
+   destello corto avisa sin robar la atención. */
+@keyframes messa-estado-cambio {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--messa-accent) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+.messa-plano__mesa.is-pedido .messa-plano__mesa-boton { animation: messa-estado-cambio 1.6s var(--ios-ease) 2; }
+
+/* La barra de herramientas del plano baja al entrar en modo edición. */
+@keyframes messa-toolbar-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.messa-plano-toolbar { animation: messa-toolbar-in .26s var(--ios-ease) both; }
+
+/* El tirador de tamaño late una vez al aparecer, para que se descubra solo. */
+@keyframes messa-handle-in { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+.messa-plano__handle { animation: messa-handle-in .3s var(--ios-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .messa-sheet, .admin-code-card, .messa-sheet-layer, .admin-code-backdrop,
+  .messa-mesa-sheet > *, .messa-salon-chip, .messa-plano__mesa, .messa-plano-toolbar,
+  .messa-plano__handle, .messa-qr-sheet article, .messa-llamados article,
+  .messa-transfer-list article, .messa-plano__mesa.is-pedido .messa-plano__mesa-boton {
+    animation: none;
+  }
+  .messa-table-card:active, .messa-button:active, .messa-plano__mesa-boton:active { transform: none; }
+}
+
+/* Integración con iPhone: nada queda debajo del notch ni de la barra de
+   gestos, y el rebote de scroll no descubre un fondo blanco ajeno al tema. */
+.admin-shell, .messa-workspace { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.messa-sheet { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+
+/* En el celular el selector Plano/Lista no entra al lado del título del panel:
+   se pasa abajo, a todo el ancho, en vez de quedar cortado contra el borde. */
+@media (max-width: 720px) {
+  .messa-salon__panel .messa-panel__header { align-items: stretch; flex-wrap: wrap; }
+  .messa-salon__panel .messa-segmented { width: 100%; }
+  .messa-salon__panel .messa-segmented button { flex: 1; }
+}

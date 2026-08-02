@@ -37,8 +37,45 @@ export interface Mesa {
   codigo_version?: number
   /** UID del tag RFID/NFC pegado a la mesa, si el local usa lectores o stickers. */
   rfid_tag?: string
+  /**
+   * Nombre propio de la mesa ("Terraza 1", "Reservado", "Barra"). Si está
+   * vacío se usa "M<numero>". El número sigue siendo el identificador que ve
+   * la cocina, así que renombrar no rompe ningún ticket.
+   */
+  nombre?: string
+  /** Tamaño en el plano, en % del ancho/alto del lienzo. Por defecto 9 × 9. */
+  ancho?: number
+  alto?: number
+  /**
+   * Comensales sentados que cargó el equipo a mano. Los dispositivos conectados
+   * se cuentan aparte: una mesa de 4 puede tener un solo celular escaneando.
+   */
+  comensales?: number
   created_at: string
   updated_at: string
+}
+
+/**
+ * Todo lo que NO es una mesa dentro del plano del salón: paredes, barras,
+ * columnas, puertas y carteles ("Cocina", "Caja", "Salida"). Se guardan igual
+ * que las mesas —posición y tamaño en porcentaje— para que el plano se adapte
+ * a cualquier pantalla sin recalcular nada.
+ */
+export type TipoElementoPlano = 'pared' | 'barra' | 'columna' | 'puerta' | 'planta' | 'etiqueta'
+
+export interface ElementoPlano {
+  id: string
+  sucursal_id: string
+  tipo: TipoElementoPlano
+  /** Texto del cartel. Sólo se usa cuando `tipo` es 'etiqueta'. */
+  texto?: string
+  pos_x: number
+  pos_y: number
+  ancho: number
+  alto: number
+  /** Giro en grados. Permite paredes en diagonal sin un editor de polígonos. */
+  rotacion?: number
+  created_at: string
 }
 
 export interface Categoria {

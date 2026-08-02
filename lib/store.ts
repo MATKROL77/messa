@@ -1,7 +1,7 @@
 'use client'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRestaurante, CierreDiario, RolUsuario, PropinaConfig, Tema, LlamadoMozo, MetodoPago, Sucursal, Categoria, ConfigDelivery, Gasto, FidelidadConfig, RecompensaFidelidad, ReviewPlato } from '@/types'
+import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRestaurante, CierreDiario, RolUsuario, PropinaConfig, Tema, LlamadoMozo, MetodoPago, Sucursal, Categoria, ConfigDelivery, Gasto, FidelidadConfig, RecompensaFidelidad, ReviewPlato, ElementoPlano, TipoElementoPlano } from '@/types'
 import { getMesasMock, insumosIniciales, platosIniciales, configInicial, tagsIniciales, propinaConfigInicial, temaInicial, sucursalesIniciales, categoriasIniciales, deliveryIntegracionesIniciales, fidelidadConfigInicial, recompensasFidelidadIniciales, MESSA_DORADO, VERDE_HEREDADO } from '@/lib/data'
 import { generarId, obtenerDispositivoId } from '@/lib/utils'
 import { normalizarTagRfid } from '@/lib/mesa-codigo'
@@ -117,6 +117,12 @@ export interface Reserva {
   id: string; nombre: string; telefono: string; email: string; fecha: string
   hora: string; personas: number; estado: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
   notas?: string; sucursal_id?: string; created_at: string
+  /**
+   * Mesa asignada. Sin esto una reserva era sólo una fila en una lista: el
+   * mozo no tenía forma de saber, parado frente a la mesa 7, que estaba
+   * reservada para las 21:00.
+   */
+  mesa_id?: string
 }
 
 interface Notificacion {
@@ -239,6 +245,15 @@ interface AppStore {
   actualizarTema: (tema: Partial<Tema>) => void
 
   actualizarPosicionMesa: (mesaId: string, x: number, y: number) => void
+  /** Cambios de layout de una mesa: tamaño, nombre, forma, capacidad. */
+  actualizarMesaLayout: (mesaId: string, cambios: Partial<Pick<Mesa, 'nombre' | 'ancho' | 'alto' | 'forma' | 'capacidad' | 'pos_x' | 'pos_y'>>) => void
+  /** Comensales sentados que carga el equipo a mano. */
+  actualizarComensalesMesa: (mesaId: string, comensales: number) => void
+  elementosPlano: ElementoPlano[]
+  crearElementoPlano: (tipo: TipoElementoPlano, texto?: string) => void
+  asignarMesaAReserva: (reservaId: string, mesaId: string | null) => void
+  actualizarElementoPlano: (id: string, cambios: Partial<Omit<ElementoPlano, 'id' | 'sucursal_id' | 'created_at'>>) => void
+  eliminarElementoPlano: (id: string) => void
   crearMesaLayout: (forma: Mesa['forma'], capacidad: number) => void
   eliminarMesaLayout: (mesaId: string) => { ok: boolean; error?: string }
   actualizarCapacidadMesa: (mesaId: string, capacidad: number, forma: Mesa['forma']) => void
@@ -324,6 +339,7 @@ export const useStore = create<AppStore>()(
       resenasEnviadas: {},
       ultimaCuentaPagada: {},
       pagosParciales: {},
+      elementosPlano: [],
       permisosAdmin: PERMISOS_ADMIN_DEFAULT,
       permisosVersion: 3,
 
@@ -809,6 +825,69 @@ export const useStore = create<AppStore>()(
 
       actualizarCapacidadMesa: (mesaId, capacidad, forma) => set(s => ({ mesas: s.mesas.map(m => m.id === mesaId ? { ...m, capacidad, forma } : m) })),
 
+      actualizarMesaLayout: (mesaId, cambios) => set(s => ({
+        mesas: s.mesas.map(m => m.id === mesaId ? {
+          ...m,
+          ...cambios,
+          // El tamaño se acota para que una mesa no pueda desbordar el plano ni
+          // volverse tan chica que deje de poder tocarse en un celular.
+          ...(cambios.ancho !== undefined ? { ancho: Math.max(5, Math.min(45, cambios.ancho)) } : {}),
+          ...(cambios.alto !== undefined ? { alto: Math.max(5, Math.min(45, cambios.alto)) } : {}),
+          ...(cambios.capacidad !== undefined ? { capacidad: Math.max(1, Math.min(30, Math.round(cambios.capacidad))) } : {}),
+          ...(cambios.nombre !== undefined ? { nombre: cambios.nombre.trim().slice(0, 28) } : {}),
+          updated_at: new Date().toISOString(),
+        } : m),
+      })),
+
+      actualizarComensalesMesa: (mesaId, comensales) => set(s => ({
+        mesas: s.mesas.map(m => m.id === mesaId
+          ? { ...m, comensales: Math.max(0, Math.min(40, Math.round(comensales))), updated_at: new Date().toISOString() }
+          : m),
+      })),
+
+      crearElementoPlano: (tipo, texto) => {
+        const { sucursalActualId } = get()
+        // Cada tipo entra con la proporción que tiene sentido para lo que
+        // representa: una pared es larga y fina, una columna es un cuadrado.
+        const medidas: Record<TipoElementoPlano, { ancho: number; alto: number }> = {
+          pared: { ancho: 32, alto: 3 },
+          barra: { ancho: 26, alto: 7 },
+          columna: { ancho: 7, alto: 7 },
+          puerta: { ancho: 12, alto: 3 },
+          planta: { ancho: 7, alto: 7 },
+          etiqueta: { ancho: 18, alto: 7 },
+        }
+        const elemento: ElementoPlano = {
+          id: 'el' + generarId(),
+          sucursal_id: sucursalActualId,
+          tipo,
+          texto: tipo === 'etiqueta' ? (texto || 'Cocina') : texto,
+          pos_x: 50,
+          pos_y: 50,
+          ...medidas[tipo],
+          rotacion: 0,
+          created_at: new Date().toISOString(),
+        }
+        set(s => ({ elementosPlano: [...s.elementosPlano, elemento] }))
+      },
+
+      actualizarElementoPlano: (id, cambios) => set(s => ({
+        elementosPlano: s.elementosPlano.map(el => el.id === id ? {
+          ...el,
+          ...cambios,
+          ...(cambios.pos_x !== undefined ? { pos_x: Math.max(0, Math.min(100, cambios.pos_x)) } : {}),
+          ...(cambios.pos_y !== undefined ? { pos_y: Math.max(0, Math.min(100, cambios.pos_y)) } : {}),
+          ...(cambios.ancho !== undefined ? { ancho: Math.max(3, Math.min(100, cambios.ancho)) } : {}),
+          ...(cambios.alto !== undefined ? { alto: Math.max(2, Math.min(100, cambios.alto)) } : {}),
+        } : el),
+      })),
+
+      eliminarElementoPlano: (id) => set(s => ({ elementosPlano: s.elementosPlano.filter(el => el.id !== id) })),
+
+      asignarMesaAReserva: (reservaId, mesaId) => set(s => ({
+        reservas: s.reservas.map(r => r.id === reservaId ? { ...r, mesa_id: mesaId || undefined } : r),
+      })),
+
       abrirCaja: () => set(s => ({ config: { ...s.config, caja_abierta: true, fecha_apertura_caja: new Date().toISOString() } })),
 
       cerrarCaja: (sucursalId) => {
@@ -934,6 +1013,6 @@ export const useStore = create<AppStore>()(
         return { ok: true }
       },
     }),
-    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, pagosParciales: s.pagosParciales, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
+    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, pagosParciales: s.pagosParciales, elementosPlano: s.elementosPlano, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
   )
 )
