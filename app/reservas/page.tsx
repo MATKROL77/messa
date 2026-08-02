@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarCheck, CalendarClock, Check, Clock3, Plus, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, Check, ChevronLeft, ChevronRight, Clock3, Plus, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import AdminOperationShell from '@/components/admin-operation-shell'
 import { useStore } from '@/lib/store'
 import { AdminButton, AdminEmpty, AdminMetric, AdminPanel, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
@@ -10,10 +10,22 @@ export default function ReservasPage() {
   const { reservas, crearReserva, cancelarReserva, confirmarReserva, sucursalActualId, sucursales } = useStore()
   const [creando, setCreando] = useState(false)
   const [toast, setToast] = useState('')
-  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', fecha: new Date().toISOString().slice(0, 10), hora: '', personas: 2, notas: '' })
   const hoy = new Date().toISOString().slice(0, 10)
+  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', fecha: hoy, hora: '', personas: 2, notas: '' })
+  // La agenda mostraba SIEMPRE el día de hoy. Una reserva cargada para mañana
+  // se guardaba bien pero no aparecía en ningún lado: parecía que el alta no
+  // había funcionado. Ahora el día se elige, y al crear una reserva la agenda
+  // salta a su fecha para que se vea el resultado en el acto.
+  const [dia, setDia] = useState(hoy)
   const sucursal = sucursales.find(item => item.id === sucursalActualId)
-  const reservasSucursal = reservas.filter(reserva => (!reserva.sucursal_id || reserva.sucursal_id === sucursalActualId) && reserva.fecha === hoy)
+  const reservasSucursal = reservas.filter(reserva => (!reserva.sucursal_id || reserva.sucursal_id === sucursalActualId) && reserva.fecha === dia)
+  const esHoy = dia === hoy
+  const etiquetaDia = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${dia}T12:00:00`))
+  const correrDia = (dias: number) => {
+    const fecha = new Date(`${dia}T12:00:00`)
+    fecha.setDate(fecha.getDate() + dias)
+    setDia(fecha.toISOString().slice(0, 10))
+  }
   const confirmadas = reservasSucursal.filter(reserva => reserva.estado === 'confirmada')
   const pendientes = reservasSucursal.filter(reserva => reserva.estado === 'pendiente')
   const personas = reservasSucursal.filter(reserva => reserva.estado !== 'cancelada').reduce((total, reserva) => total + reserva.personas, 0)
@@ -27,9 +39,13 @@ export default function ReservasPage() {
   const crear = () => {
     if (!form.nombre.trim() || !form.hora) return showToast('Completá nombre y hora')
     crearReserva({ ...form, sucursal_id: sucursalActualId })
+    // Saltar al día de la reserva recién creada: si se cargó para otra fecha,
+    // sin esto el alta se completaba pero la pantalla no cambiaba en nada.
+    setDia(form.fecha)
+    const creadaOtroDia = form.fecha !== dia
     setForm({ nombre: '', telefono: '', email: '', fecha: hoy, hora: '', personas: 2, notas: '' })
     setCreando(false)
-    showToast('Reserva creada')
+    showToast(creadaOtroDia ? `Reserva creada — te llevamos al ${form.fecha.split('-').reverse().slice(0, 2).join('/')}` : 'Reserva creada')
   }
 
   return (
@@ -43,14 +59,26 @@ export default function ReservasPage() {
         <AdminToast>{toast}</AdminToast>
 
         <div className="messa-metrics">
-          <AdminMetric label="Reservas de hoy" value={`${reservasSucursal.length}`} detail={proxima ? `Próxima a las ${proxima.hora}` : 'Agenda disponible'} Icon={CalendarCheck} tone="gold" progress={Math.min(100, reservasSucursal.length * 10)} />
+          <AdminMetric label={esHoy ? "Reservas de hoy" : "Reservas del día"} value={`${reservasSucursal.length}`} detail={proxima ? `Próxima a las ${proxima.hora}` : 'Agenda disponible'} Icon={CalendarCheck} tone="gold" progress={Math.min(100, reservasSucursal.length * 10)} />
           <AdminMetric label="Confirmadas" value={`${confirmadas.length}`} detail="Llegadas aseguradas" Icon={UserRoundCheck} tone="green" progress={(confirmadas.length / Math.max(reservasSucursal.length, 1)) * 100} />
           <AdminMetric label="Pendientes" value={`${pendientes.length}`} detail="Requieren contacto" Icon={CalendarClock} tone={pendientes.length ? 'amber' : 'green'} progress={(pendientes.length / Math.max(reservasSucursal.length, 1)) * 100} />
           <AdminMetric label="Cubiertos previstos" value={`${personas}`} detail="Personas no canceladas" Icon={UsersRound} tone="blue" progress={Math.min(100, (personas / 80) * 100)} />
         </div>
 
         <div className="messa-reservations-layout">
-          <AdminPanel eyebrow="Hoy" title="Línea de llegadas" detail={new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}>
+          <AdminPanel
+            eyebrow={esHoy ? 'Hoy' : 'Otro día'}
+            title="Línea de llegadas"
+            detail={etiquetaDia}
+            action={(
+              <div className="messa-day-picker">
+                <button type="button" onClick={() => correrDia(-1)} aria-label="Día anterior"><ChevronLeft size={16} /></button>
+                <input type="date" value={dia} onChange={event => setDia(event.target.value || hoy)} aria-label="Elegir día de la agenda" />
+                <button type="button" onClick={() => correrDia(1)} aria-label="Día siguiente"><ChevronRight size={16} /></button>
+                {!esHoy && <button type="button" className="is-today" onClick={() => setDia(hoy)}>Hoy</button>}
+              </div>
+            )}
+          >
             {reservasSucursal.length ? (
               <div className="messa-reservation-timeline">
                 {[...reservasSucursal].sort((a, b) => a.hora.localeCompare(b.hora)).map(reserva => {
@@ -68,7 +96,7 @@ export default function ReservasPage() {
                   )
                 })}
               </div>
-            ) : <AdminEmpty Icon={CalendarCheck} title="Agenda despejada" description="No hay reservas cargadas para hoy." action={<AdminButton tone="neutral" icon={Plus} onClick={() => setCreando(true)}>Crear reserva</AdminButton>} />}
+            ) : <AdminEmpty Icon={CalendarCheck} title="Agenda despejada" description={esHoy ? "No hay reservas cargadas para hoy." : `No hay reservas para el ${etiquetaDia}.`} action={<AdminButton tone="neutral" icon={Plus} onClick={() => setCreando(true)}>Crear reserva</AdminButton>} />}
           </AdminPanel>
 
           <AdminPanel eyebrow="Capacidad" title="Pulso del servicio" detail="Distribución prevista por hora.">

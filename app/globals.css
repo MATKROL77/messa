@@ -495,8 +495,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .admin-dock-stack .admin-sidebar { position: static; }
 .admin-theme-switch { align-items: center; background: linear-gradient(180deg, rgba(47,43,35,.84), rgba(25,23,19,.9)); border: 1px solid var(--admin-border); border-radius: 17px; box-shadow: 0 12px 28px rgba(18,16,12,.22), inset 0 1px 0 rgba(255,255,255,.08); color: rgba(248,244,235,.62); cursor: pointer; display: flex; gap: 6px; height: 36px; justify-content: center; padding: 0; position: relative; transition: transform .18s var(--messa-ease), border-color .18s var(--messa-ease); width: 58px; }
 .admin-theme-switch:hover { border-color: rgba(242,220,158,.36); transform: translateY(-1px); }
-.admin-theme-switch svg { position: relative; z-index: 1; }.admin-theme-switch svg:first-child { color: #f0d889; }.admin-theme-switch i { background: rgba(255,250,239,.14); border-radius: 11px; height: 28px; left: 3px; position: absolute; top: 3px; transition: transform .2s var(--messa-ease); width: 25px; }
-.admin-theme-switch[aria-checked="true"] i { transform: translateX(27px); }.admin-theme-switch[aria-checked="true"] svg:first-child { color: rgba(248,244,235,.5); }.admin-theme-switch[aria-checked="true"] svg:nth-child(2) { color: #efe3bd; }
+/* El interruptor de tema estaba al revés: en modo oscuro se iluminaba el sol
+   y la pastilla se apoyaba sobre él. Ahora marca el tema VIGENTE — luna
+   encendida cuando está oscuro, sol encendido cuando está claro — que es como
+   se lee un selector de dos posiciones. */
+.admin-theme-switch svg { position: relative; z-index: 1; }
+.admin-theme-switch i { background: rgba(255,250,239,.14); border-radius: 11px; height: 28px; left: 3px; position: absolute; top: 3px; transition: transform .2s var(--messa-ease); width: 25px; }
+/* Estado por defecto: oscuro. `aria-checked` sólo es true en claro. */
+.admin-theme-switch i { transform: translateX(27px); }
+.admin-theme-switch svg:first-child { color: rgba(248,244,235,.42); }
+.admin-theme-switch svg:nth-child(2) { color: #f0d889; }
+.admin-theme-switch[aria-checked="true"] i { transform: none; }
+.admin-theme-switch[aria-checked="true"] svg:first-child { color: #a8761a; }
+.admin-theme-switch[aria-checked="true"] svg:nth-child(2) { color: rgba(70, 65, 57, .42); }
 
 [data-admin-theme="light"] .admin-shell { --admin-bg: #f4f0e7; --admin-bg-deep: #ebe5d8; --admin-surface: rgba(255,255,255,.69); --admin-surface-strong: rgba(248,246,241,.9); --admin-border: rgba(33,30,23,.11); --admin-text: #171714; --admin-text-soft: #47443e; --admin-text-muted: #777168; --admin-shadow: 0 20px 46px rgba(68,57,39,.12); background: #f4f0e7; }
 [data-admin-theme="light"] .admin-ambient { background: radial-gradient(circle at 82% 8%, rgba(205,163,89,.22), transparent 27%), radial-gradient(circle at 5% 78%, rgba(67,112,88,.12), transparent 29%), linear-gradient(135deg, #f8f5ee, #eee7da 54%, #f5f0e7); }
@@ -4994,3 +5005,211 @@ html[data-admin-theme="light"] :is(.messa-switch-row, .messa-form-stack, .messa-
   .messa-salon__panel .messa-segmented { width: 100%; }
   .messa-salon__panel .messa-segmented button { flex: 1; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   CONTRASTE DE ICONOS EN EL PANEL
+   Regla: el icono siempre lleva la tinta del fondo sobre el que
+   está. Fondo claro → icono oscuro; fondo oscuro → icono claro.
+   Nunca se declara uno sin el otro.
+
+   El tema claro del panel había re-tintado los textos pero no los
+   iconos: seguían con los valores del tema oscuro (dorado pálido,
+   verde menta, crema) sobre fondos crema. Medido, algunos daban
+   1.03:1 — prácticamente invisibles.
+   ══════════════════════════════════════════════════════════════ */
+
+/* Los tonos de las tarjetas de métrica y los accesos rápidos.
+   En claro se oscurecen hasta pasar 4.5:1 sobre el fondo del panel. */
+html[data-admin-theme="light"] .admin-tone--gold { background: rgba(184, 137, 26, .12); color: #8a6413; }
+html[data-admin-theme="light"] .admin-tone--green { background: rgba(31, 99, 64, .11); color: #1c5a3c; }
+html[data-admin-theme="light"] .admin-tone--blue { background: rgba(47, 95, 136, .11); color: #2b5a80; }
+html[data-admin-theme="light"] .admin-tone--amber { background: rgba(154, 104, 24, .12); color: #8a5b16; }
+html[data-admin-theme="light"] .admin-tone--ink { background: rgba(29, 27, 23, .08); color: #2c2922; }
+
+/* El dock rápido, la barra superior y las notas de servicio heredaban el
+   dorado claro pensado para el fondo negro. */
+html[data-admin-theme="light"] .admin-quick-dock a svg,
+html[data-admin-theme="light"] .admin-quick-dock a { color: #47443e; }
+html[data-admin-theme="light"] .admin-quick-dock a.active,
+html[data-admin-theme="light"] .admin-quick-dock a.active svg { color: #6f5313; }
+html[data-admin-theme="light"] .messa-service-note { color: #8a6413; }
+html[data-admin-theme="light"] .messa-service-note svg { color: currentColor; }
+html[data-admin-theme="light"] .admin-panel__heading > svg,
+html[data-admin-theme="light"] .admin-panel__heading svg { color: #777168; }
+html[data-admin-theme="light"] .admin-panel__heading a svg { color: #8a6413; }
+html[data-admin-theme="light"] .admin-shortcut > svg { color: #8d867a; }
+html[data-admin-theme="light"] .admin-metric-card__icon svg,
+html[data-admin-theme="light"] .admin-shortcut__icon svg { color: currentColor; }
+
+/* Regla de fondo para todo el panel: un icono dentro de un botón o un enlace
+   toma el color del texto de ese botón. Así, cambiar el fondo de un control
+   arrastra su icono automáticamente y no se puede olvidar uno de los dos. */
+.admin-shell :is(button, a, label) > svg,
+.admin-shell :is(button, a, label) > span > svg { color: currentColor; }
+
+/* La barra lateral: los iconos inactivos eran casi del color del fondo. */
+.admin-dock-link svg { color: currentColor; }
+.admin-dock-link { color: rgba(248, 244, 235, .78); }
+.admin-dock-link:hover { color: #fffaf0; }
+.admin-dock-link.active, .admin-dock-link.active svg { color: #211d16 !important; }
+html[data-admin-theme="light"] .admin-dock-link { color: #55504a; }
+html[data-admin-theme="light"] .admin-dock-link:hover { color: #171714; }
+html[data-admin-theme="light"] .admin-dock-brand { color: #8a6413; }
+.admin-dock-brand svg { color: currentColor; }
+
+/* El interruptor de tema apagado tenía tan poco contraste que no se leía como
+   "la otra opción", sino como un icono roto. */
+.admin-theme-switch svg:first-child { color: rgba(248, 244, 235, .55); }
+html[data-admin-theme="light"] .admin-theme-switch[aria-checked="true"] svg:nth-child(2) { color: rgba(70, 65, 57, .6); }
+
+/* Los botones sólidos: fondo y tinta declarados juntos, iconos por herencia. */
+.messa-button--primary, .messa-button--primary svg { color: #211c13; }
+html[data-admin-theme="light"] .messa-button--primary,
+html[data-admin-theme="light"] .messa-button--primary svg { color: #1f1a11; }
+
+/* ══════════════════════════════════════════════════════════════
+   Editor de la carta: la foto del plato se montaba sobre los
+   botones de la fila de arriba.
+   La foto flota 64 px por encima de su tarjeta, pero la separación
+   entre filas era de 28 px como mucho: los 36 px restantes caían
+   justo sobre los botones de editar y borrar de la tarjeta
+   anterior, y quedaban tapados e intocables.
+   La separación pasa a derivarse del vuelo de la foto, así no se
+   puede volver a desincronizar cambiando uno de los dos números.
+   ══════════════════════════════════════════════════════════════ */
+.messa-admin-product-grid {
+  --producto-vuelo: 64px;   /* cuánto asoma la foto por encima de la tarjeta */
+  --producto-aire: 22px;    /* respiro entre esa foto y la tarjeta de arriba */
+  gap: calc(var(--producto-vuelo) + var(--producto-aire)) 14px;
+  padding-top: calc(var(--producto-vuelo) + 8px);
+}
+@media (max-width: 1100px) {
+  .messa-admin-product-grid { gap: calc(var(--producto-vuelo) + var(--producto-aire)) 10px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORRECCIONES DE MODO CLARO Y DE MARCA
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── La barra de la marca sobre la segunda S ──
+   El pseudo-elemento se posicionaba con porcentajes sobre toda la palabra y
+   se corría al cambiar el tamaño. Ahora cuelga de la letra. */
+.messa-wordmark::after { content: none; }
+.messa-wordmark__s { position: relative; }
+.messa-wordmark__s::after {
+  background: linear-gradient(135deg, transparent 40%, #d2a24e 43%, #f7d67e 50%, #b8782f 57%, transparent 60%);
+  content: '';
+  height: 168%;
+  left: -18%;
+  pointer-events: none;
+  position: absolute;
+  top: -34%;
+  transform: rotate(-11deg);
+  width: 136%;
+}
+
+/* ── Las barras de stock no se veían en claro ──
+   La pista era `rgba(255,255,255,.07)` —blanco casi transparente— sobre un
+   fondo crema: la barra parecía un guión suelto en el aire. Y los rellenos
+   eran los tonos pensados para el fondo negro. */
+html[data-admin-theme="light"] .messa-stock-level > i { background: rgba(29, 27, 23, .12); height: 6px; }
+html[data-admin-theme="light"] .messa-stock-level--green { background: #1f6340; }
+html[data-admin-theme="light"] .messa-stock-level--amber { background: #9a6818; }
+html[data-admin-theme="light"] .messa-stock-level--rose { background: #a33f34; }
+.messa-stock-level > i { height: 6px; }
+
+/* ── Los menús flotantes de la barra superior seguían en oscuro ──
+   El de sucursales y el de notificaciones se abrían negros en medio de un
+   panel claro, como si fueran de otra aplicación. */
+html[data-admin-theme="light"] .admin-topbar-popover {
+  background: #fffdf9;
+  border-color: rgba(29, 27, 23, .1);
+  box-shadow: 0 24px 55px rgba(68, 57, 39, .18);
+  color: #1d1b17;
+}
+html[data-admin-theme="light"] .admin-branch-menu > button { color: #1d1b17; }
+html[data-admin-theme="light"] .admin-branch-menu > button:hover,
+html[data-admin-theme="light"] .admin-branch-menu > button.active { background: rgba(29, 27, 23, .06); }
+html[data-admin-theme="light"] .admin-branch-menu small { color: #777168; }
+html[data-admin-theme="light"] .admin-branch-menu svg { color: #8a6413; }
+html[data-admin-theme="light"] .admin-notification-popover header b,
+html[data-admin-theme="light"] .admin-notification-popover button b { color: #1d1b17; }
+html[data-admin-theme="light"] .admin-notification-popover small,
+html[data-admin-theme="light"] .admin-notification-popover p { color: #777168; }
+html[data-admin-theme="light"] .admin-notification-popover button:hover { background: rgba(29, 27, 23, .05); }
+html[data-admin-theme="light"] .admin-notification-popover__footer button { color: #777168; }
+html[data-admin-theme="light"] .admin-topbar-popover :is(button, header) svg { color: currentColor; }
+
+/* ── El interruptor de tema no se leía en claro ──
+   La pastilla que marca la posición era casi blanca sobre una pista casi
+   blanca: no se distinguía cuál de los dos lados estaba activo. */
+html[data-admin-theme="light"] .admin-theme-switch { background: #ece7dc; border-color: rgba(29, 27, 23, .12); }
+html[data-admin-theme="light"] .admin-theme-switch i {
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(68, 57, 39, .22);
+}
+html[data-admin-theme="light"] .admin-theme-switch svg:first-child { color: #8a6413; }
+html[data-admin-theme="light"] .admin-theme-switch svg:nth-child(2) { color: rgba(70, 65, 57, .55); }
+/* En oscuro la pastilla también tiene que verse contra la pista. */
+.admin-theme-switch i { background: rgba(255, 250, 239, .22); }
+
+/* Selector de día de la agenda de reservas. */
+.messa-day-picker {
+  align-items: center;
+  background: rgba(255, 250, 239, .06);
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+}
+.messa-day-picker button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--admin-text);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  min-width: 30px;
+  padding: 0 6px;
+}
+.messa-day-picker button svg { color: currentColor; }
+.messa-day-picker button:hover { background: rgba(255, 250, 239, .1); }
+.messa-day-picker button.is-today { font-size: 11.5px; font-weight: 650; padding: 0 11px; }
+.messa-day-picker input {
+  background: transparent;
+  border: 0;
+  color: var(--admin-text);
+  font-size: 12.5px;
+  min-height: 30px;
+  padding: 0 4px;
+}
+.messa-day-picker input::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(.8); }
+html[data-admin-theme="light"] .messa-day-picker { background: #fff; border-color: rgba(29, 27, 23, .11); }
+html[data-admin-theme="light"] .messa-day-picker button:hover { background: rgba(29, 27, 23, .06); }
+html[data-admin-theme="light"] .messa-day-picker input::-webkit-calendar-picker-indicator { filter: none; }
+
+/* Las recompensas de fidelidad: el chip de puntos se salía por el borde de
+   abajo de su tarjeta porque la tarjeta tenía alto fijo. */
+.messa-reward-grid article { align-items: start; height: auto; min-height: 0; padding-bottom: 15px; }
+.messa-reward-grid article > div { display: grid; gap: 6px; min-width: 0; }
+.messa-reward-grid article .messa-status { justify-self: start; }
+
+/* `--admin-accent` es el dorado claro pensado para el fondo negro del panel.
+   En modo claro quedaba a 1.7:1 sobre el crema: los iconos de las notas, los
+   webhooks y las cabeceras se perdían. El tema claro usa su propia versión,
+   oscurecida hasta pasar 4.5:1. */
+html[data-admin-theme="light"] .admin-shell {
+  --admin-accent: #8a6413;
+  --admin-accent-strong: #6f5313;
+}
+
+/* La barra de progreso de las tarjetas de métrica salía NEGRA en modo claro.
+   Se pinta con `background: currentColor` para tomar el color del tono de la
+   tarjeta, pero una regla general del tema claro pinta de tinta oscura todo
+   `b` dentro del panel — y esa barra es un `<b>`. Vuelve a heredar el tono. */
+.messa-progress b { color: inherit !important; }
+html[data-admin-theme="light"] .messa-progress { background: rgba(29, 27, 23, .12); }
