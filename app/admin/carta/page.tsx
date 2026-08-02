@@ -71,6 +71,7 @@ export default function CartaAdminPage() {
     selector: '.messa-admin-product',
     activo: reordenando,
     onMover: reordenarPlato,
+    onActivar: () => { setReordenando(true); showToast('Modo ordenar: deslizá el plato a su lugar') },
   })
 
   const pendientesPrecio = platos.filter(plato => plato.precio_pendiente || plato.precio <= 0).length
@@ -109,6 +110,7 @@ export default function CartaAdminPage() {
           <AdminButton
             tone={reordenando ? 'primary' : 'neutral'}
             icon={reordenando ? Check : ArrowUpDown}
+            title={reordenando ? 'Terminar de ordenar' : 'Ordenar la carta — o mantené apretado cualquier plato'}
             onClick={() => { setReordenando(valor => !valor); if (!reordenando) showToast('Arrastrá cada plato al lugar que quieras') }}
           >
             {reordenando ? 'Listo' : 'Reordenar'}
@@ -147,7 +149,7 @@ export default function CartaAdminPage() {
         {reordenando && (
           <p className="messa-reorder-hint">
             <GripVertical size={15} aria-hidden="true" />
-            Agarrá cualquier plato y deslizalo hasta donde quieras. El orden es el mismo que ven los comensales en la carta.
+            Agarrá cualquier plato y deslizalo hasta donde quieras — también se entra acá manteniéndolo apretado. El orden es el mismo que ven los comensales en la carta.
           </p>
         )}
 
@@ -163,7 +165,7 @@ export default function CartaAdminPage() {
                 className={`messa-admin-product${arrastrandoId === plato.id ? ' is-arrastrando' : ''}`}
                 key={plato.id}
                 data-reorder-id={plato.id}
-                {...(reordenando ? propsElemento(plato.id) : {})}
+                {...propsElemento(plato.id)}
               >
                 {reordenando && (
                   <button

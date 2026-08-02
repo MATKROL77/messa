@@ -5327,6 +5327,10 @@ html[data-menu-theme="dark"] .read-only-badge { background: rgba(226, 197, 121, 
   0%, 100% { transform: rotate(-.5deg); }
   50% { transform: rotate(.5deg); }
 }
+/* Mantener apretado un plato enciende el modo ordenar, así que sobre las
+   tarjetas no puede aparecer el menú de iOS ("Copiar / Buscar"): se comería
+   el gesto justo cuando el dedo lleva medio segundo apoyado. */
+.messa-admin-product { -webkit-touch-callout: none; }
 .messa-admin-product-grid.is-reordenando .messa-admin-product {
   animation: messa-jiggle .34s ease-in-out infinite;
   cursor: grab;
