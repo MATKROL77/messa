@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Check, ChefHat, CircleCheckBig, Clock3, PackageCheck, ReceiptText, Truck, X } from 'lucide-react'
 import AdminOperationShell from '@/components/admin-operation-shell'
 import { useStore } from '@/lib/store'
+import { useSyncOperativo } from '@/lib/use-sync-operativo'
 import type { Pedido } from '@/types'
 import { formatPrecio, tiempoEnMinutos, tiempoTranscurrido } from '@/lib/utils'
 import { AdminButton, AdminEmpty, AdminMetric, AdminPanel, AdminSegmented, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
@@ -13,6 +14,9 @@ type Filtro = 'activos' | 'en_cocina' | 'listo' | 'entregado'
 
 export default function CocinaPage() {
   const { pedidos, marcarPedidoListo, marcarPedidoEntregado, cancelarPedido, insumos, sucursalActualId, sucursales } = useStore()
+
+  // Los pedidos llegan desde el celular de cada mesa, no desde esta pantalla.
+  useSyncOperativo()
   const [filtro, setFiltro] = useState<Filtro>('activos')
   const [seleccionado, setSeleccionado] = useState<Pedido | null>(null)
   const [toast, setToast] = useState('')

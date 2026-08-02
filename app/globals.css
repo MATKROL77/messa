@@ -5213,3 +5213,45 @@ html[data-admin-theme="light"] .admin-shell {
    `b` dentro del panel — y esa barra es un `<b>`. Vuelve a heredar el tono. */
 .messa-progress b { color: inherit !important; }
 html[data-admin-theme="light"] .messa-progress { background: rgba(29, 27, 23, .12); }
+
+/* ── Aviso de contraste en el editor de identidad ── */
+.messa-brand-warning {
+  align-items: flex-start;
+  background: rgba(226, 197, 121, .12);
+  border: 1px solid rgba(226, 197, 121, .3);
+  border-radius: 13px;
+  color: var(--admin-text);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  line-height: 1.5;
+  margin: 12px 0 0;
+  padding: 11px 13px;
+}
+.messa-brand-warning svg { color: #d8a954; flex: 0 0 auto; margin-top: 1px; }
+html[data-admin-theme="light"] .messa-brand-warning { background: rgba(154, 104, 24, .1); border-color: rgba(154, 104, 24, .26); }
+html[data-admin-theme="light"] .messa-brand-warning svg { color: #8a5b16; }
+
+/* ── Los filtros segmentados se salían del panel en el celular ──
+   La fila de categorías de la carta y los filtros de stock se cortaban contra
+   el borde derecho sin manera de llegar a los últimos. Se deslizan, con el
+   mismo desvanecido que la carta pública para que se entienda que hay más. */
+@media (max-width: 720px) {
+  .messa-segmented {
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    max-width: 100%;
+    overflow-x: auto;
+    padding-right: 26px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .messa-segmented::-webkit-scrollbar { display: none; }
+  .messa-segmented button { flex: 0 0 auto; scroll-snap-align: start; }
+}
+
+/* ── El icono de correo de la cuenta del comensal ──
+   Iba en dorado claro sobre crema: 2.55:1. Los iconos de las etiquetas toman
+   la tinta apagada del formulario, que sí contrasta. */
+.messa-cuenta-campo > span svg { color: var(--messa-accent-ink, #8a6a1f); }
+html[data-menu-theme="dark"] .messa-cuenta-campo > span svg { color: var(--messa-accent-ink-dark, #e8c979); }

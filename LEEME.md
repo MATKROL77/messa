@@ -198,18 +198,12 @@ Ambas pantallas ahora dejan explícito, con una advertencia visible, que lo que 
 
 ## 🔌 Conectar Supabase
 
-### Paso pendiente: correr la migración de cuentas
+### Migraciones (ya aplicadas)
 
-**Esto lo tenés que hacer vos una sola vez, y son 30 segundos.** No lo puedo
-hacer yo con la service role key: la API REST de Supabase (PostgREST) sólo lee
-y escribe filas, no crea tablas. Crear tablas es DDL y necesita el SQL Editor o
-la cadena de conexión de Postgres.
+Si alguna vez armás un proyecto de Supabase nuevo, hay que correrlas en orden
+desde el **SQL Editor**. En el proyecto actual ya están aplicadas.
 
-1. Entrá a tu proyecto en supabase.com → **SQL Editor** → **New query**
-2. Pegá todo el contenido de **`supabase/migration_04_cuentas_y_rangos.sql`**
-3. **Run**
-
-Con eso quedan creadas tres tablas:
+`migration_04_cuentas_y_rangos.sql` crea tres tablas:
 
 | Tabla | Para qué |
 |---|---|
@@ -224,18 +218,43 @@ navegador no las puede tocar: sólo el servidor, con la service role key.
 padrón devuelve un 503 con el mensaje exacto de qué falta, y el login del equipo
 con las cuentas de variables de entorno sigue funcionando igual.
 
-### El resto de la base (pedidos, mesas, stock)
+### Sincronización entre dispositivos
+
+Migración **`supabase/migration_05_estado_operativo.sql`** (ya aplicada).
+
+Mesas, pedidos, llamados al mozo y el plano del salón se comparten entre todos
+los dispositivos. Un pedido hecho desde el celular de la mesa aparece en la
+pantalla de la cocina y en el salón **en unos 2 segundos**, sin recargar nada.
+
+Cómo funciona:
+
+- Cada entidad viaja como JSON con su marca de tiempo a la tabla
+  `estado_operativo`. Cada dispositivo empuja lo que cambió y se trae lo que
+  cambió en los demás, todo en una sola llamada cada 4 segundos.
+- **Gana la versión más nueva de cada entidad, no del conjunto.** Dos mozos
+  tocando mesas distintas al mismo tiempo no se pisan. Dos tocando la misma
+  mesa sí: el último en escribir manda.
+- Es sondeo, no websocket, porque el runtime de Cloudflare Workers no mantiene
+  conexiones abiertas por sesión. A cambio, sobrevive sin más a que un celular
+  se bloquee y vuelva.
+- **Si el servidor no responde, nada se rompe**: la app sigue funcionando
+  contra el almacenamiento local, como antes. La sincronización es una mejora,
+  no un requisito.
+- Quién puede escribir qué: el equipo, con su sesión; el comensal, sólo sobre
+  SU mesa y los pedidos de esa mesa, probando el código que viene en el QR
+  físico. El plano del salón sólo lo toca el panel.
+
+### El resto de la base
 
 1. SQL Editor → pegá `supabase/schema.sql` → Run (si todavía no lo hiciste)
 2. Copiá tus credenciales desde Project Settings → API
 3. Cargalas como secrets: `NEXT_PUBLIC_SUPABASE_URL`,
    `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`
 
-Falta todavía migrar las acciones de `lib/store.ts` (pedidos, mesas, stock) de
-localStorage a Supabase con Realtime. Hasta que eso pase, **un pedido hecho
-desde un celular no aparece en la PC de la cocina**: cada dispositivo tiene su
-propia copia. Las cuentas de clientes y del equipo sí son compartidas, porque
-viven en la base desde el principio.
+Lo que **todavía no** se comparte entre dispositivos: la carta, el stock, las
+reservas, los gastos y la configuración. Eso lo edita el dueño desde un solo
+lugar, así que en la práctica no molesta — pero si dos personas editan la carta
+desde equipos distintos, cada una ve la suya.
 
 ---
 

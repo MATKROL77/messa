@@ -39,6 +39,7 @@ import MenuActionDialog from '@/components/menu/MenuActionDialog'
 import TableAccessGate from '@/components/menu/TableAccessGate'
 import { accesoRecordado, olvidarAcceso, recordarAcceso, validarCodigoDeMesa } from '@/lib/acceso-mesa'
 import { withBasePath } from '@/lib/base-path'
+import { useSyncOperativo } from '@/lib/use-sync-operativo'
 
 type VistaAll = 'menu' | 'carrito' | 'pago' | 'reviews'
 type ReviewDraft = Record<string, { rating: number; comentario: string }>
@@ -179,6 +180,11 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
 
   const pedidosMesa = pedidos.filter(p => p.mesa_id === mesaId && p.estado !== 'cancelado')
   const pedidosEnCocina = pedidosMesa.filter(p => ['en_cocina', 'entregado'].includes(p.estado))
+
+  // El pedido de este comensal tiene que llegar a la cocina y al salón. El
+  // servidor valida el código de la mesa antes de aceptar nada, así que este
+  // teléfono sólo puede escribir sobre SU mesa.
+  useSyncOperativo({ mesaId })
 
   /**
    * Acredita los puntos del consumo en la cuenta del comensal (si tiene una en

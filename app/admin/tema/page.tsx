@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Palette, Save, Sparkles, Type } from 'lucide-react'
+import { AlertTriangle, Check, Palette, Save, Sparkles, Type } from 'lucide-react'
 import { AdminButton, AdminPanel, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
 import MessaWordmark from '@/components/messa-wordmark'
 import { useStore } from '@/lib/store'
@@ -22,6 +22,29 @@ const PALETAS = [
   { nombre: 'Nocturno', primario: '#D2B467', fondo: '#181713' },
 ]
 
+/** Luminancia relativa de un color hexadecimal (fórmula de la WCAG). */
+function luminancia(hex: string): number {
+  const limpio = hex.replace('#', '')
+  const completo = limpio.length === 3 ? limpio.split('').map(c => c + c).join('') : limpio
+  const canales = [0, 2, 4].map(i => parseInt(completo.slice(i, i + 2), 16) / 255)
+  const lineal = canales.map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)))
+  return 0.2126 * lineal[0] + 0.7152 * lineal[1] + 0.0722 * lineal[2]
+}
+
+function contraste(a: string, b: string): number {
+  try {
+    const [alta, baja] = [luminancia(a), luminancia(b)].sort((x, y) => y - x)
+    return (alta + 0.05) / (baja + 0.05)
+  } catch {
+    return 21
+  }
+}
+
+/** Tinta legible sobre un fondo: negra si el fondo es claro, blanca si es oscuro. */
+function tintaSobre(fondo: string): string {
+  return luminancia(fondo) > 0.42 ? '#1d1b17' : '#fffaf0'
+}
+
 export default function TemaPage() {
   const { tema, actualizarTema } = useStore()
   const [form, setForm] = useState(tema)
@@ -36,6 +59,8 @@ export default function TemaPage() {
     actualizarTema(form)
     showToast('Identidad aplicada')
   }
+
+  const contrasteTitulo = contraste(form.color_primario, form.color_fondo)
 
   return (
     <AdminWorkspace
@@ -95,9 +120,19 @@ export default function TemaPage() {
             <MessaWordmark />
             <h2 style={{ color: form.color_primario, fontFamily: form.fuente_titulos }}>{form.nombre_marca || 'MESSA'}</h2>
             <p>From mess to mesa.</p>
-            <button type="button" style={{ background: form.color_primario }}>Acción principal</button>
+            <button type="button" style={{ background: form.color_primario, color: tintaSobre(form.color_primario) }}>Acción principal</button>
             <div><Palette size={16} />Una identidad cuidada en cada punto de contacto.</div>
           </div>
+          {/* La vista previa muestra el color TAL CUAL se eligió, sin corregirlo:
+              si lo maquillara, el dueño elegiría un color que después no se lee
+              en la carta real. En vez de eso se avisa. */}
+          {contrasteTitulo < 4.5 && (
+            <p className="messa-brand-warning" role="status">
+              <AlertTriangle size={15} aria-hidden="true" />
+              Con este color el nombre queda en {contrasteTitulo.toFixed(1)}:1 sobre el fondo.
+              Para que se lea cómodo conviene 4.5:1 — probá un tono más oscuro.
+            </p>
+          )}
         </AdminPanel>
       </div>
     </AdminWorkspace>

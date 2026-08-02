@@ -252,6 +252,8 @@ interface AppStore {
   elementosPlano: ElementoPlano[]
   crearElementoPlano: (tipo: TipoElementoPlano, texto?: string) => void
   asignarMesaAReserva: (reservaId: string, mesaId: string | null) => void
+  /** Funde en el estado local lo que cambió en otros dispositivos. */
+  aplicarEstadoRemoto: (cambios: { id: string; tipo: 'mesa' | 'pedido' | 'llamado' | 'elemento'; payload: unknown; updated_at: string }[]) => void
   actualizarElementoPlano: (id: string, cambios: Partial<Omit<ElementoPlano, 'id' | 'sucursal_id' | 'created_at'>>) => void
   eliminarElementoPlano: (id: string) => void
   crearMesaLayout: (forma: Mesa['forma'], capacidad: number) => void
@@ -887,6 +889,62 @@ export const useStore = create<AppStore>()(
       asignarMesaAReserva: (reservaId, mesaId) => set(s => ({
         reservas: s.reservas.map(r => r.id === reservaId ? { ...r, mesa_id: mesaId || undefined } : r),
       })),
+
+      aplicarEstadoRemoto: (cambios) => {
+        if (!cambios.length) return
+        set(s => {
+          // Índices por id para no recorrer el array entero por cada cambio.
+          const mesas = new Map(s.mesas.map(m => [m.id, m]))
+          const pedidos = new Map(s.pedidos.map(p => [p.id, p]))
+          const llamados = new Map(s.llamadosMozo.map(l => [l.id, l]))
+          const elementos = new Map(s.elementosPlano.map(e => [e.id, e]))
+          let tocoMesas = false, tocoPedidos = false, tocoLlamados = false, tocoElementos = false
+
+          const masNuevo = (local: { updated_at?: string; created_at?: string } | undefined, remotoSello: string) => {
+            if (!local) return true
+            const localSello = local.updated_at || local.created_at || ''
+            // Ante empate gana lo local: si los dos relojes marcan lo mismo, el
+            // dispositivo que está usando la persona no debería parpadear.
+            return remotoSello > localSello
+          }
+
+          for (const cambio of cambios) {
+            if (cambio.tipo === 'mesa') {
+              const remoto = cambio.payload as Mesa
+              if (!masNuevo(mesas.get(cambio.id), cambio.updated_at)) continue
+              mesas.set(cambio.id, remoto)
+              tocoMesas = true
+            } else if (cambio.tipo === 'pedido') {
+              const remoto = cambio.payload as Pedido
+              if (!masNuevo(pedidos.get(cambio.id), cambio.updated_at)) continue
+              pedidos.set(cambio.id, remoto)
+              tocoPedidos = true
+            } else if (cambio.tipo === 'elemento') {
+              const remoto = cambio.payload as ElementoPlano
+              const local = elementos.get(cambio.id)
+              if (local && cambio.updated_at <= (local.created_at || '')) continue
+              elementos.set(cambio.id, remoto)
+              tocoElementos = true
+            } else {
+              const remoto = cambio.payload as LlamadoMozo
+              const local = llamados.get(cambio.id)
+              // Un llamado ya atendido no vuelve a estar pendiente: si dos
+              // dispositivos lo tocaron, "atendido" es el estado final.
+              if (local?.atendido && !remoto.atendido) continue
+              if (local && !masNuevo({ created_at: local.created_at }, cambio.updated_at) && local.atendido === remoto.atendido) continue
+              llamados.set(cambio.id, remoto)
+              tocoLlamados = true
+            }
+          }
+
+          return {
+            ...(tocoMesas ? { mesas: [...mesas.values()] } : {}),
+            ...(tocoPedidos ? { pedidos: [...pedidos.values()] } : {}),
+            ...(tocoLlamados ? { llamadosMozo: [...llamados.values()] } : {}),
+            ...(tocoElementos ? { elementosPlano: [...elementos.values()] } : {}),
+          }
+        })
+      },
 
       abrirCaja: () => set(s => ({ config: { ...s.config, caja_abierta: true, fecha_apertura_caja: new Date().toISOString() } })),
 
