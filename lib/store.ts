@@ -52,33 +52,39 @@ const sincronizarPlatosMessa = (platos: Plato[]) => {
     if (!persistido) return aprobado
 
     const modificadores = aprobado.modificadores.map(modificadorAprobado => {
-      const modificadorPersistido = persistido.modificadores.find(modificador => modificador.id === modificadorAprobado.id)
+      // Un plato que llega de otro dispositivo puede venir incompleto (una
+      // versión anterior de la app, un guardado a medias). Antes eso lanzaba y
+      // se perdía la carta entera; ahora se cae con elegancia al aprobado.
+      const modificadorPersistido = (persistido.modificadores || []).find(modificador => modificador.id === modificadorAprobado.id)
       if (!modificadorPersistido) return modificadorAprobado
       return {
         ...modificadorAprobado,
         ...modificadorPersistido,
-        opciones: modificadorPersistido.opciones.map(opcionPersistida => ({
+        opciones: (modificadorPersistido.opciones || []).map(opcionPersistida => ({
           ...modificadorAprobado.opciones.find(opcion => opcion.id === opcionPersistida.id),
           ...opcionPersistida,
         })),
       }
     })
 
+    // Cada campo cae al valor aprobado si el que llegó no está definido: así un
+    // payload parcial actualiza lo que trae y no borra el resto.
+    const oSiNo = <T,>(valor: T | undefined, respaldo: T): T => (valor === undefined || valor === null ? respaldo : valor)
     return {
       ...aprobado,
-      precio: persistido.precio,
-      precio_pendiente: persistido.precio_pendiente,
-      disponible: persistido.disponible,
-      destacado: persistido.destacado,
-      tiempo_preparacion_minutos: persistido.tiempo_preparacion_minutos,
-      ingredientes: persistido.ingredientes,
-      insumos_requeridos: persistido.insumos_requeridos,
+      precio: oSiNo(persistido.precio, aprobado.precio),
+      precio_pendiente: oSiNo(persistido.precio_pendiente, aprobado.precio_pendiente),
+      disponible: oSiNo(persistido.disponible, aprobado.disponible),
+      destacado: oSiNo(persistido.destacado, aprobado.destacado),
+      tiempo_preparacion_minutos: oSiNo(persistido.tiempo_preparacion_minutos, aprobado.tiempo_preparacion_minutos),
+      ingredientes: oSiNo(persistido.ingredientes, aprobado.ingredientes),
+      insumos_requeridos: oSiNo(persistido.insumos_requeridos, aprobado.insumos_requeridos),
       modificadores,
-      tags: persistido.tags,
-      notas_cocina: persistido.notas_cocina,
-      rating: persistido.rating,
-      total_reviews: persistido.total_reviews,
-      reviews_muestra: persistido.reviews_muestra,
+      tags: oSiNo(persistido.tags, aprobado.tags),
+      notas_cocina: oSiNo(persistido.notas_cocina, aprobado.notas_cocina),
+      rating: oSiNo(persistido.rating, aprobado.rating),
+      total_reviews: oSiNo(persistido.total_reviews, aprobado.total_reviews),
+      reviews_muestra: oSiNo(persistido.reviews_muestra, aprobado.reviews_muestra),
     }
   })
 }
@@ -253,7 +259,11 @@ interface AppStore {
   crearElementoPlano: (tipo: TipoElementoPlano, texto?: string) => void
   asignarMesaAReserva: (reservaId: string, mesaId: string | null) => void
   /** Funde en el estado local lo que cambió en otros dispositivos. */
-  aplicarEstadoRemoto: (cambios: { id: string; tipo: 'mesa' | 'pedido' | 'llamado' | 'elemento'; payload: unknown; updated_at: string }[]) => void
+  aplicarEstadoRemoto: (cambios: { id: string; tipo: string; payload: unknown; updated_at: string }[]) => void
+  /** Reemplaza un dominio completo (carta, stock, agenda…) con la versión remota. */
+  aplicarPaqueteRemoto: (tipo: string, payload: Record<string, unknown>) => void
+  /** Arma el paquete de un dominio para mandarlo al resto de los dispositivos. */
+  armarPaquete: (tipo: string) => Record<string, unknown> | null
   actualizarElementoPlano: (id: string, cambios: Partial<Omit<ElementoPlano, 'id' | 'sucursal_id' | 'created_at'>>) => void
   eliminarElementoPlano: (id: string) => void
   crearMesaLayout: (forma: Mesa['forma'], capacidad: number) => void
@@ -889,6 +899,62 @@ export const useStore = create<AppStore>()(
       asignarMesaAReserva: (reservaId, mesaId) => set(s => ({
         reservas: s.reservas.map(r => r.id === reservaId ? { ...r, mesa_id: mesaId || undefined } : r),
       })),
+
+      armarPaquete: (tipo) => {
+        const s = get()
+        // Cada dominio agrupa exactamente lo que se edita junto en una pantalla.
+        if (tipo === 'carta') return { platos: s.platos, categoriasDisponibles: s.categoriasDisponibles, tagsDisponibles: s.tagsDisponibles }
+        if (tipo === 'stock') return { insumos: s.insumos }
+        if (tipo === 'agenda') return { reservas: s.reservas }
+        if (tipo === 'finanzas') return { gastos: s.gastos, cierres: s.cierres, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico }
+        if (tipo === 'ajustes') return {
+          config: s.config, tema: s.tema, propinaConfig: s.propinaConfig,
+          fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad,
+          permisosAdmin: s.permisosAdmin, deliveryIntegraciones: s.deliveryIntegraciones,
+          sucursales: s.sucursales,
+        }
+        return null
+      },
+
+      aplicarPaqueteRemoto: (tipo, payload) => {
+        if (!payload || typeof payload !== 'object') return
+        try {
+        set(() => {
+          if (tipo === 'carta') {
+            const platos = Array.isArray(payload.platos) ? payload.platos as Plato[] : undefined
+            return {
+              // El catálogo aprobado se vuelve a imponer sobre lo que llega: si
+              // un dispositivo viejo mandara platos retirados, no reaparecen.
+              ...(platos ? { platos: sincronizarPlatosMessa(platos) } : {}),
+              ...(Array.isArray(payload.categoriasDisponibles) ? { categoriasDisponibles: payload.categoriasDisponibles as Categoria[] } : {}),
+              ...(Array.isArray(payload.tagsDisponibles) ? { tagsDisponibles: payload.tagsDisponibles as string[] } : {}),
+            }
+          }
+          if (tipo === 'stock') return Array.isArray(payload.insumos) ? { insumos: payload.insumos as Insumo[] } : {}
+          if (tipo === 'agenda') return Array.isArray(payload.reservas) ? { reservas: payload.reservas as Reserva[] } : {}
+          if (tipo === 'finanzas') return {
+            ...(Array.isArray(payload.gastos) ? { gastos: payload.gastos as Gasto[] } : {}),
+            ...(Array.isArray(payload.cierres) ? { cierres: payload.cierres as CierreDiario[] } : {}),
+            ...(typeof payload.costoInsumosConsumidoHistorico === 'number' ? { costoInsumosConsumidoHistorico: payload.costoInsumosConsumidoHistorico } : {}),
+          }
+          if (tipo === 'ajustes') return {
+            ...(payload.config ? { config: payload.config as ConfigRestaurante } : {}),
+            ...(payload.tema ? { tema: migrarTema(payload.tema as Tema) } : {}),
+            ...(payload.propinaConfig ? { propinaConfig: payload.propinaConfig as PropinaConfig } : {}),
+            ...(payload.fidelidadConfig ? { fidelidadConfig: payload.fidelidadConfig as FidelidadConfig } : {}),
+            ...(Array.isArray(payload.recompensasFidelidad) ? { recompensasFidelidad: payload.recompensasFidelidad as RecompensaFidelidad[] } : {}),
+            ...(payload.permisosAdmin ? { permisosAdmin: payload.permisosAdmin as Record<RolUsuario, PermisoAdmin[]> } : {}),
+            ...(Array.isArray(payload.deliveryIntegraciones) ? { deliveryIntegraciones: payload.deliveryIntegraciones as ConfigDelivery[] } : {}),
+            ...(Array.isArray(payload.sucursales) ? { sucursales: payload.sucursales as Sucursal[] } : {}),
+          }
+          return {}
+        })
+        } catch (error) {
+          // Un paquete corrupto de otro dispositivo no puede dejar la pantalla
+          // en blanco: se descarta y se sigue con lo que había.
+          console.error(`No se pudo aplicar el paquete "${tipo}"`, error)
+        }
+      },
 
       aplicarEstadoRemoto: (cambios) => {
         if (!cambios.length) return

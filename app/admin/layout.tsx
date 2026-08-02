@@ -11,6 +11,7 @@ import AdminThemeToggle from '@/components/admin-theme-toggle'
 import { limpiarIconoLegacy } from '@/lib/utils'
 import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
 import { withBasePath } from '@/lib/base-path'
+import { useSyncOperativo } from '@/lib/use-sync-operativo'
 
 const PERMISO_RUTA: { prefix: string; permiso: PermisoAdmin }[] = [
   { prefix: '/admin/tema', permiso: 'identidad' },
@@ -88,6 +89,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter()
   const pathname = usePathname()
   const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual, notificaciones, marcarNotificacionLeida, limpiarNotificaciones, permisosAdmin, initStore } = useStore()
+  // Un solo ciclo de sincronización para TODO el panel: mesas, pedidos,
+  // llamados, plano, carta, stock, agenda, finanzas y ajustes. Va acá porque
+  // todas las pantallas —incluidas /dashboard, /cocina y /reservas— terminan
+  // renderizando este layout.
+  useSyncOperativo({ incluirConfiguracion: true })
   const [verificando, setVerificando] = useState(true)
   const [sucursalesAbiertas, setSucursalesAbiertas] = useState(false)
   const [alertasAbiertas, setAlertasAbiertas] = useState(false)

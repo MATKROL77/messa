@@ -40,6 +40,7 @@ import TableAccessGate from '@/components/menu/TableAccessGate'
 import { accesoRecordado, olvidarAcceso, recordarAcceso, validarCodigoDeMesa } from '@/lib/acceso-mesa'
 import { withBasePath } from '@/lib/base-path'
 import { useSyncOperativo } from '@/lib/use-sync-operativo'
+import { useCartaPublica } from '@/lib/use-carta-publica'
 
 type VistaAll = 'menu' | 'carrito' | 'pago' | 'reviews'
 type ReviewDraft = Record<string, { rating: number; comentario: string }>
@@ -185,6 +186,7 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
   // servidor valida el código de la mesa antes de aceptar nada, así que este
   // teléfono sólo puede escribir sobre SU mesa.
   useSyncOperativo({ mesaId })
+  useCartaPublica()
 
   /**
    * Acredita los puntos del consumo en la cuenta del comensal (si tiene una en

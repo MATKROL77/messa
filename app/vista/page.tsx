@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Clock3, Sparkles, Star, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
+import { useCartaPublica } from '@/lib/use-carta-publica'
 import type { Plato } from '@/types'
 import { formatPrecio, formatPrecioCarta } from '@/lib/utils'
 import DishMedia from '@/components/menu/DishMedia'
@@ -20,6 +21,8 @@ export default function VistaPage() {
   const [activeDish, setActiveDish] = useState<Plato | null>(null)
 
   useEffect(() => { iniciarModoVista() }, [iniciarModoVista])
+  // La carta que ve la gente es la que publicó el dueño, no la de fábrica.
+  useCartaPublica()
 
   const visibles = useMemo(() => platos.filter(plato => {
     const text = `${plato.nombre} ${plato.descripcion} ${plato.tags.join(' ')}`.toLowerCase()

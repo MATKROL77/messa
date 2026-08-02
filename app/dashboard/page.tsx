@@ -42,7 +42,6 @@ import type { Mesa, MesaEstado, MetodoPago } from '@/types'
 import { formatPrecio, tiempoEnMinutos, tiempoTranscurrido } from '@/lib/utils'
 import { formatearCodigo, normalizarTagRfid } from '@/lib/mesa-codigo'
 import { useCodigosQr } from '@/lib/use-codigos-qr'
-import { useSyncOperativo } from '@/lib/use-sync-operativo'
 
 type VistaSalon = 'plano' | 'lista'
 type MesaFilter = MesaEstado | 'todas'
@@ -97,8 +96,6 @@ export default function SalonPage() {
   const [, forceTick] = useState(0)
 
   useEffect(() => { initStore() }, [initStore])
-  // El salón se mantiene al día con lo que pasa en los celulares de las mesas.
-  useSyncOperativo()
   useEffect(() => {
     const interval = setInterval(() => forceTick(value => value + 1), 30_000)
     return () => clearInterval(interval)

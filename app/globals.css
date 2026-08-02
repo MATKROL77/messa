@@ -5255,3 +5255,47 @@ html[data-admin-theme="light"] .messa-brand-warning svg { color: #8a5b16; }
    la tinta apagada del formulario, que sí contrasta. */
 .messa-cuenta-campo > span svg { color: var(--messa-accent-ink, #8a6a1f); }
 html[data-menu-theme="dark"] .messa-cuenta-campo > span svg { color: var(--messa-accent-ink-dark, #e8c979); }
+
+/* ══════════════════════════════════════════════════════════════
+   ÚLTIMA PASADA DE LEGIBILIDAD
+   Medido con una auditoría que ahora también atraviesa los fondos
+   con degradado — antes se los saltaba, y justo ahí, en la barra
+   lateral, estaba el peor caso de todos.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Los iconos de la barra lateral eran casi negros sobre negro ──
+   Los pintaba `.admin-sidebar nav a { color: var(--messa-muted) }`, una regla
+   que quedó del panel claro anterior. Como lleva dos clases gana por
+   especificidad a `.admin-dock-link`, así que hay que igualarla o superarla.
+   La barra es siempre oscura, en los dos temas: la tinta va clara siempre. */
+.admin-sidebar nav a.admin-dock-link,
+.admin-sidebar nav a.admin-dock-link svg { color: rgba(248, 244, 235, .8); }
+.admin-sidebar nav a.admin-dock-link:hover,
+.admin-sidebar nav a.admin-dock-link:hover svg { color: #fffaf0; }
+/* Fondo claro ⇒ tinta oscura: el activo es una pastilla clara. */
+.admin-sidebar nav a.admin-dock-link.active,
+.admin-sidebar nav a.admin-dock-link.active svg { color: #211d16; }
+html[data-admin-theme="light"] .admin-sidebar nav a.admin-dock-link,
+html[data-admin-theme="light"] .admin-sidebar nav a.admin-dock-link svg { color: #55504a; }
+html[data-admin-theme="light"] .admin-sidebar nav a.admin-dock-link:hover,
+html[data-admin-theme="light"] .admin-sidebar nav a.admin-dock-link:hover svg { color: #171714; }
+html[data-admin-theme="light"] .admin-sidebar nav a.admin-dock-link.active,
+html[data-admin-theme="light"] .admin-sidebar nav a.admin-dock-link.active svg { color: #211d16; }
+/* Los rótulos de sección de la barra venían del mismo bloque viejo. */
+.admin-sidebar > p, .admin-nav-group > p { color: rgba(248, 244, 235, .5); }
+.admin-wordmark small { color: rgba(248, 244, 235, .55); }
+
+/* ── Texto secundario por debajo del mínimo ──
+   `--admin-text-muted` daba entre 3.7 y 4.4:1 sobre las tarjetas del panel.
+   Se aclara lo justo para pasar 4.5:1 sin dejar de leerse como secundario. */
+.admin-shell { --admin-text-muted: #bbb3a4; }
+[data-admin-theme="light"] .admin-shell { --admin-text-muted: #6a645b; }
+
+/* Las etiquetas de estado neutro quedaban en 4:1. */
+.messa-status--neutral { color: #d6cfc2; }
+html[data-admin-theme="light"] .messa-status--neutral { color: #3a352e; }
+
+/* La insignia de "solo lectura" de la carta estaba en 3.35:1. */
+.read-only-badge { color: var(--messa-accent-ink) !important; font-weight: 700; }
+html:not([data-menu-theme="dark"]) .read-only-badge { background: rgba(184, 137, 26, .16); color: #7a5a12 !important; }
+html[data-menu-theme="dark"] .read-only-badge { background: rgba(226, 197, 121, .16); color: #f0dda6 !important; }
