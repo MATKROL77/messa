@@ -47,7 +47,7 @@ const CATEGORIAS_MESSA_NUEVAS = new Set(['sushi', 'cafes'])
 const sincronizarPlatosMessa = (platos: Plato[]) => {
   const persistidos = new Map(platos.map(plato => [plato.id, plato]))
 
-  return platosIniciales.map(aprobado => {
+  return ordenarPlatos(platosIniciales.map(aprobado => {
     const persistido = persistidos.get(aprobado.id)
     if (!persistido) return aprobado
 
@@ -72,6 +72,10 @@ const sincronizarPlatosMessa = (platos: Plato[]) => {
     const oSiNo = <T,>(valor: T | undefined, respaldo: T): T => (valor === undefined || valor === null ? respaldo : valor)
     return {
       ...aprobado,
+      // El orden lo decide el editor desde el panel, no el catálogo versionado.
+      // Antes se tomaba del aprobado y cualquier reordenamiento se perdía al
+      // recargar: el sushi volvía solo al medio de los cafés.
+      orden: oSiNo(persistido.orden, aprobado.orden),
       precio: oSiNo(persistido.precio, aprobado.precio),
       precio_pendiente: oSiNo(persistido.precio_pendiente, aprobado.precio_pendiente),
       disponible: oSiNo(persistido.disponible, aprobado.disponible),
@@ -86,8 +90,19 @@ const sincronizarPlatosMessa = (platos: Plato[]) => {
       total_reviews: oSiNo(persistido.total_reviews, aprobado.total_reviews),
       reviews_muestra: oSiNo(persistido.reviews_muestra, aprobado.reviews_muestra),
     }
-  })
+  }))
 }
+
+/**
+ * Deja los platos en el orden que eligió el editor.
+ *
+ * Se ordena acá, en el store, y no en cada pantalla: la carta pública, la
+ * mesa y el panel tienen que mostrar exactamente la misma secuencia. Si cada
+ * una ordenara por su cuenta, alcanzaría con que una se olvidara para que el
+ * dueño acomode la carta y la gente la siga viendo desordenada.
+ */
+const ordenarPlatos = (platos: Plato[]) =>
+  [...platos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
 const sincronizarInsumosMessa = (insumos: Insumo[]) => [
   ...insumos,
   ...insumosIniciales.filter(inicial => !insumos.some(actual => actual.id === inicial.id)),
@@ -240,6 +255,8 @@ interface AppStore {
   agregarPlato: (plato: Omit<Plato, 'id' | 'rating' | 'total_reviews'>) => void
   eliminarPlato: (platoId: string) => void
   toggleDestacado: (platoId: string) => void
+  /** Mueve un plato a la posición de otro, respetando el orden del editor. */
+  reordenarPlato: (platoId: string, destinoId: string) => void
   toggleDisponible: (platoId: string) => void
   agregarTagDisponible: (tag: string) => void
   eliminarTagDisponible: (tag: string) => void
@@ -788,6 +805,21 @@ export const useStore = create<AppStore>()(
       },
       eliminarPlato: (platoId) => set(s => ({ platos: s.platos.filter(p => p.id !== platoId) })),
       toggleDestacado: (platoId) => set(s => ({ platos: s.platos.map(p => p.id === platoId ? { ...p, destacado: !p.destacado } : p) })),
+
+      reordenarPlato: (platoId, destinoId) => {
+        if (platoId === destinoId) return
+        set(s => {
+          const ordenados = ordenarPlatos(s.platos)
+          const desde = ordenados.findIndex(p => p.id === platoId)
+          const hasta = ordenados.findIndex(p => p.id === destinoId)
+          if (desde < 0 || hasta < 0) return {}
+          const [movido] = ordenados.splice(desde, 1)
+          ordenados.splice(hasta, 0, movido)
+          // Se renumera todo de diez en diez: deja lugar para insertar entre
+          // dos platos sin tener que reescribir la lista entera cada vez.
+          return { platos: ordenados.map((p, i) => ({ ...p, orden: (i + 1) * 10 })) }
+        })
+      },
       toggleDisponible: (platoId) => set(s => ({ platos: s.platos.map(p => p.id === platoId ? { ...p, disponible: !p.disponible } : p) })),
 
       agregarTagDisponible: (tag) => {

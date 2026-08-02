@@ -1,6 +1,6 @@
 'use client'
 
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
@@ -28,16 +28,19 @@ export function AdminWorkspace({ eyebrow, title, description, actions, children,
   )
 }
 
-export function AdminPanel({ eyebrow, title, detail, action, children, className = '' }: {
+export function AdminPanel({ eyebrow, title, detail, action, children, className = '', ...resto }: {
   eyebrow?: string
   title?: string
   detail?: string
   action?: ReactNode
   children: ReactNode
   className?: string
-}) {
+// El resto viaja al <article>: sin esto, cosas como `data-reorder-id` o
+// `onPointerDown` se pierden en silencio (TypeScript no avisa de los
+// atributos con guion), y el panel queda inerte sin ningún error visible.
+} & HTMLAttributes<HTMLElement>) {
   return (
-    <article className={`messa-panel ${className}`}>
+    <article className={`messa-panel ${className}`} {...resto}>
       {(eyebrow || title || detail || action) && (
         <header className="messa-panel__header">
           <div>

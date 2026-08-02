@@ -5299,3 +5299,85 @@ html[data-admin-theme="light"] .messa-status--neutral { color: #3a352e; }
 .read-only-badge { color: var(--messa-accent-ink) !important; font-weight: 700; }
 html:not([data-menu-theme="dark"]) .read-only-badge { background: rgba(184, 137, 26, .16); color: #7a5a12 !important; }
 html[data-menu-theme="dark"] .read-only-badge { background: rgba(226, 197, 121, .16); color: #f0dda6 !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   REORDENAR LA CARTA
+   El mismo lenguaje que la pantalla de inicio del iPhone: se entra
+   en un modo, las tarjetas tiemblan para avisar que se pueden
+   agarrar, se levanta la que se toca y las demás hacen lugar.
+   ══════════════════════════════════════════════════════════════ */
+
+.messa-reorder-hint {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--messa-accent) 26%, transparent);
+  border-radius: 14px;
+  color: var(--admin-text);
+  display: flex;
+  font-size: 12.5px;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 11px 14px;
+}
+.messa-reorder-hint svg { color: var(--messa-accent); flex: 0 0 auto; }
+
+/* El temblor. Cada tarjeta arranca con un desfase distinto para que el
+   conjunto no lata al unísono, que se vería mecánico. */
+@keyframes messa-jiggle {
+  0%, 100% { transform: rotate(-.5deg); }
+  50% { transform: rotate(.5deg); }
+}
+.messa-admin-product-grid.is-reordenando .messa-admin-product {
+  animation: messa-jiggle .34s ease-in-out infinite;
+  cursor: grab;
+  /* Sin esto el navegador interpreta el arrastre como scroll de la página. */
+  touch-action: none;
+  user-select: none;
+}
+.messa-admin-product-grid.is-reordenando .messa-admin-product:nth-child(2n) { animation-delay: -.11s; animation-duration: .36s; }
+.messa-admin-product-grid.is-reordenando .messa-admin-product:nth-child(3n) { animation-delay: -.22s; animation-duration: .32s; }
+.messa-admin-product-grid.is-reordenando .messa-admin-product:nth-child(5n) { animation-delay: -.06s; }
+
+/* La que está en la mano: se levanta, deja de temblar y no intercepta el
+   puntero, para que se detecte la tarjeta que hay debajo. */
+.messa-admin-product.is-arrastrando {
+  animation: none !important;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, .45);
+  cursor: grabbing;
+  opacity: .96;
+  pointer-events: none;
+  position: relative;
+  z-index: 30;
+}
+html[data-admin-theme="light"] .messa-admin-product.is-arrastrando { box-shadow: 0 30px 60px rgba(68, 57, 39, .3); }
+
+/* Las demás se apagan un poco mientras hay una en el aire: dirige la vista al
+   hueco donde va a caer. */
+.messa-admin-product-grid.is-reordenando:has(.is-arrastrando) .messa-admin-product:not(.is-arrastrando) { opacity: .72; }
+
+/* El distintivo de la esquina, como el menos de los iconos de iOS. */
+.messa-reorder-handle {
+  align-items: center;
+  background: var(--messa-accent);
+  border: 2px solid var(--admin-surface-strong, #23211c);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
+  color: #211d16;
+  cursor: grab;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 2px;
+  left: 4px;
+  padding: 4px 9px 4px 5px;
+  position: absolute;
+  top: 4px;
+  z-index: 6;
+}
+.messa-reorder-handle svg { color: currentColor; }
+.messa-reorder-handle:focus-visible { outline: 2px solid var(--messa-accent); outline-offset: 3px; }
+html[data-admin-theme="light"] .messa-reorder-handle { border-color: #fffdf9; }
+
+@media (prefers-reduced-motion: reduce) {
+  .messa-admin-product-grid.is-reordenando .messa-admin-product { animation: none; }
+}

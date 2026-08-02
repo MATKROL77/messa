@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, ChefHat, Clock3, Eye, EyeOff, FolderCog, ImageIcon, Link2, ListChecks, Pencil, Plus, Search, Sparkles, Star, Trash2, UtensilsCrossed } from 'lucide-react'
+import { ArrowUpDown, Check, ChefHat, Clock3, Eye, EyeOff, FolderCog, GripVertical, ImageIcon, Link2, ListChecks, Pencil, Plus, Search, Sparkles, Star, Trash2, UtensilsCrossed } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import type { Ingrediente, Insumo, Modificador, Plato } from '@/types'
 import { formatPrecio, generarId } from '@/lib/utils'
 import DishMedia from '@/components/menu/DishMedia'
+import { useReordenar } from '@/lib/use-reordenar'
 import ImageUploader from '@/components/ImageUploader'
 import { AdminButton, AdminMetric, AdminPanel, AdminSegmented, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
 
@@ -33,6 +34,7 @@ export default function CartaAdminPage() {
     agregarPlato,
     eliminarPlato,
     toggleDestacado,
+    reordenarPlato,
     toggleDisponible,
     categoriasDisponibles,
     agregarCategoria,
@@ -53,6 +55,8 @@ export default function CartaAdminPage() {
   const [nuevaEtiqueta, setNuevaEtiqueta] = useState('')
   const [toast, setToast] = useState('')
 
+  const [reordenando, setReordenando] = useState(false)
+
   const showToast = (mensaje: string) => {
     setToast(mensaje)
     window.setTimeout(() => setToast(''), 2400)
@@ -62,6 +66,12 @@ export default function CartaAdminPage() {
     .filter(plato => categoria === 'todos' || plato.categoria_id === categoria)
     .filter(plato => `${plato.nombre} ${plato.descripcion}`.toLowerCase().includes(busqueda.toLowerCase()))
     .sort((a, b) => a.orden - b.orden), [busqueda, categoria, platos])
+
+  const { arrastrandoId, propsContenedor, propsElemento, propsTirador } = useReordenar({
+    selector: '.messa-admin-product',
+    activo: reordenando,
+    onMover: reordenarPlato,
+  })
 
   const pendientesPrecio = platos.filter(plato => plato.precio_pendiente || plato.precio <= 0).length
   const activos = platos.filter(plato => plato.disponible).length
@@ -96,6 +106,13 @@ export default function CartaAdminPage() {
       description="Los 20 productos aprobados, sus assets transparentes y toda la información operativa viven en un único catálogo."
       actions={(
         <>
+          <AdminButton
+            tone={reordenando ? 'primary' : 'neutral'}
+            icon={reordenando ? Check : ArrowUpDown}
+            onClick={() => { setReordenando(valor => !valor); if (!reordenando) showToast('Arrastrá cada plato al lugar que quieras') }}
+          >
+            {reordenando ? 'Listo' : 'Reordenar'}
+          </AdminButton>
           <AdminButton tone="neutral" icon={FolderCog} onClick={() => setCategoriasAbiertas(true)}>Categorías</AdminButton>
           <AdminButton tone="primary" icon={Plus} onClick={() => setNuevo({ ...EMPTY_PLATO })}>Nuevo producto</AdminButton>
         </>
@@ -127,11 +144,38 @@ export default function CartaAdminPage() {
           />
         </div>
 
-        <div className="messa-admin-product-grid">
-          {filtrados.map(plato => {
+        {reordenando && (
+          <p className="messa-reorder-hint">
+            <GripVertical size={15} aria-hidden="true" />
+            Agarrá cualquier plato y deslizalo hasta donde quieras. El orden es el mismo que ven los comensales en la carta.
+          </p>
+        )}
+
+        <div
+          className={`messa-admin-product-grid${reordenando ? ' is-reordenando' : ''}`}
+          {...propsContenedor}
+        >
+          {filtrados.map((plato, indice) => {
             const categoriaActual = categoriasDisponibles.find(item => item.id === plato.categoria_id)
+            const vecinos = { anterior: filtrados[indice - 1]?.id, siguiente: filtrados[indice + 1]?.id }
             return (
-              <AdminPanel className="messa-admin-product" key={plato.id}>
+              <AdminPanel
+                className={`messa-admin-product${arrastrandoId === plato.id ? ' is-arrastrando' : ''}`}
+                key={plato.id}
+                data-reorder-id={plato.id}
+                {...(reordenando ? propsElemento(plato.id) : {})}
+              >
+                {reordenando && (
+                  <button
+                    type="button"
+                    className="messa-reorder-handle"
+                    aria-label={`Mover ${plato.nombre}. Usá las flechas para cambiarlo de lugar.`}
+                    {...propsTirador(plato.id, vecinos)}
+                  >
+                    <GripVertical size={16} aria-hidden="true" />
+                    <span>{indice + 1}</span>
+                  </button>
+                )}
                 <div className="messa-admin-product__media"><DishMedia plato={plato} variant="card" /></div>
                 <div className="messa-admin-product__body">
                   <div className="messa-admin-product__meta">
@@ -147,10 +191,10 @@ export default function CartaAdminPage() {
                       {plato.precio_pendiente || plato.precio <= 0 ? 'Precio pendiente' : formatPrecio(plato.precio)}
                     </strong>
                     <div className="messa-admin-product__actions">
-                      <button type="button" onClick={() => toggleDestacado(plato.id)} aria-label={plato.destacado ? `Quitar ${plato.nombre} de destacados` : `Destacar ${plato.nombre}`} title="Recomendación del chef"><Star size={15} fill={plato.destacado ? 'currentColor' : 'none'} /></button>
-                      <button type="button" onClick={() => toggleDisponible(plato.id)} aria-label={plato.disponible ? `Ocultar ${plato.nombre}` : `Mostrar ${plato.nombre}`} title={plato.disponible ? 'Ocultar' : 'Mostrar'}>{plato.disponible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
-                      <button type="button" onClick={() => setEditando({ ...plato })} aria-label={`Editar ${plato.nombre}`} title="Editar"><Pencil size={15} /></button>
-                      <button type="button" onClick={() => setEliminando(plato)} aria-label={`Eliminar ${plato.nombre}`} title="Eliminar"><Trash2 size={15} /></button>
+                      <button type="button" data-no-arrastrar="1" onClick={() => toggleDestacado(plato.id)} aria-label={plato.destacado ? `Quitar ${plato.nombre} de destacados` : `Destacar ${plato.nombre}`} title="Recomendación del chef"><Star size={15} fill={plato.destacado ? 'currentColor' : 'none'} /></button>
+                      <button type="button" data-no-arrastrar="1" onClick={() => toggleDisponible(plato.id)} aria-label={plato.disponible ? `Ocultar ${plato.nombre}` : `Mostrar ${plato.nombre}`} title={plato.disponible ? 'Ocultar' : 'Mostrar'}>{plato.disponible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
+                      <button type="button" data-no-arrastrar="1" onClick={() => setEditando({ ...plato })} aria-label={`Editar ${plato.nombre}`} title="Editar"><Pencil size={15} /></button>
+                      <button type="button" data-no-arrastrar="1" onClick={() => setEliminando(plato)} aria-label={`Eliminar ${plato.nombre}`} title="Eliminar"><Trash2 size={15} /></button>
                     </div>
                   </div>
                 </div>
