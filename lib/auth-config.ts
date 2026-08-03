@@ -6,7 +6,7 @@
 // Esto reemplaza al MASTER_PASSWORD hardcodeado que existía antes en
 // lib/store.ts — ya no está en el código fuente en ningún lado.
 
-export type RolFijo = 'creator' | 'admin' | 'gerente' | 'editor' | 'staff'
+export type RolFijo = 'creator' | 'admin' | 'gerente' | 'editor' | 'staff' | 'vitrina'
 
 export interface CuentaFija {
   email: string
@@ -43,6 +43,23 @@ export function obtenerCuentasFijas(): CuentaFija[] {
   }
   if (process.env.STAFF_EMAIL && process.env.STAFF_PASSWORD_HASH) {
     cuentas.push({ email: process.env.STAFF_EMAIL, passwordHash: process.env.STAFF_PASSWORD_HASH, nombre: process.env.STAFF_NOMBRE || 'Personal de salón', rol: 'staff' })
+  }
+
+  // La cuenta de demostración del portfolio. Va ÚLTIMA a propósito: si por un
+  // error de configuración su email coincidiera con el de una cuenta real,
+  // gana la real y nadie queda encerrado en modo sólo lectura.
+  //
+  // Su contraseña es débil y está publicada, y eso está bien: este rango no
+  // puede escribir nada en el servidor (ver app/api/sync/route.ts). Lo que
+  // protege al restaurante no es la contraseña, es lo que la cuenta no puede
+  // hacer.
+  if (process.env.VITRINA_EMAIL && process.env.VITRINA_PASSWORD_HASH) {
+    cuentas.push({
+      email: process.env.VITRINA_EMAIL,
+      passwordHash: process.env.VITRINA_PASSWORD_HASH,
+      nombre: process.env.VITRINA_NOMBRE || 'Visitante',
+      rol: 'vitrina',
+    })
   }
 
   return cuentas
