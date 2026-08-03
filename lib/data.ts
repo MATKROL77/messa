@@ -1,8 +1,8 @@
 import { Plato, Categoria, Insumo, ConfigRestaurante, PropinaConfig, Tema, Sucursal, ConfigDelivery, FidelidadConfig, RecompensaFidelidad } from '@/types'
 
 export const sucursalesIniciales: Sucursal[] = [
-  { id: 'suc1', nombre: 'Kansas Palermo', direccion: 'Av. Libertador 3900, CABA', telefono: '11 4802-0000', activa: true, created_at: new Date().toISOString() },
-  { id: 'suc2', nombre: 'Kansas Nordelta', direccion: 'Av. de los Lagos 6500, Tigre', telefono: '11 4871-0000', activa: true, created_at: new Date().toISOString() },
+  { id: 'suc1', nombre: 'Resto Palermo', direccion: 'Av. Libertador 3900, CABA', telefono: '11 4802-0000', activa: true, created_at: new Date().toISOString() },
+  { id: 'suc2', nombre: 'Resto Nordelta', direccion: 'Av. de los Lagos 6500, Tigre', telefono: '11 4871-0000', activa: true, created_at: new Date().toISOString() },
 ]
 
 export const categoriasIniciales: Categoria[] = [
@@ -102,7 +102,7 @@ export const recompensasFidelidadIniciales: RecompensaFidelidad[] = [
 ]
 
 export const configInicial: ConfigRestaurante = {
-  nombre: 'Kansas Steakhouse',
+  nombre: 'Resto',
   subtitulo: 'Parrilla Premium · Buenos Aires',
   mostrar_nutricion: true,
   panera: {

@@ -2,7 +2,7 @@
 -- MESSA — Migración 07: varios restaurantes, no sólo varias sucursales
 --
 -- Hasta acá el sistema tenía un solo nivel: la sucursal. Alcanzaba para
--- Kansas con tres locales, no para venderle a Kansas Y a Bonafide: todo
+-- un restaurante con tres locales, no para venderle a dos restaurantes: todo
 -- colgaba de `sucursal_id` y nada impedía que dos clientes distintos se vieran
 -- los datos si adivinaban un id.
 --
@@ -50,7 +50,7 @@ update estado_operativo set organizacion_id = 'org-messa' where organizacion_id 
 update usuarios_staff set organizacion_id = 'org-messa' where organizacion_id is null;
 
 insert into organizaciones (id, nombre, slug, plan)
-values ('org-messa', 'Kansas', 'kansas', 'activo')
+values ('org-messa', 'Resto', 'resto', 'activo')
 on conflict (id) do nothing;
 
 -- Recién ahora se puede exigir: si se exigiera antes, fallaría con las filas

@@ -85,7 +85,7 @@ export default function SucursalesPage() {
         )}
       >
         <div className="messa-form-stack">
-          <label><span>Nombre</span><input value={form.nombre} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} placeholder="Kansas Puerto Madero" /></label>
+          <label><span>Nombre</span><input value={form.nombre} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} placeholder="Resto Puerto Madero" /></label>
           <label><span>Dirección</span><input value={form.direccion} onChange={event => setForm(current => ({ ...current, direccion: event.target.value }))} placeholder="Av. Alicia M. de Justo 1200" /></label>
           <label><span>Teléfono</span><input value={form.telefono} onChange={event => setForm(current => ({ ...current, telefono: event.target.value }))} placeholder="11 0000-0000" inputMode="tel" /></label>
           <p className="messa-form-help">Después de crearla podés sumar mesas y sus QR desde Mesas y códigos QR, y cargar su stock desde Inventario.</p>
