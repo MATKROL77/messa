@@ -5793,3 +5793,41 @@ html[data-admin-theme="light"] .messa-sin-conexion__icono { background: color-mi
 .messa-legal__nota { color: var(--messa-muted, #79736a); font-size: 12.5px !important; }
 .messa-legal__footer { border-top: 1px solid var(--messa-line, rgba(33,30,23,.11)); margin-top: 34px; padding-top: 22px; }
 .messa-legal__footer a { color: var(--messa-accent, #c69a3f); font-size: 13px; font-weight: 600; text-decoration: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   MARCA MESSA — el archivo original, no una reconstrucción
+   ══════════════════════════════════════════════════════════════ */
+
+.messa-wordmark {
+  align-items: center;
+  display: inline-flex;
+  /* Se dimensiona por altura y el ancho lo pone la proporción del archivo,
+     así el logo nunca se estira ni se aplasta. */
+  height: 30px;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+}
+/* La barra dorada ahora viene dentro del PNG: el pseudo-elemento que la
+   dibujaba tiene que desaparecer o quedarían dos. */
+.messa-wordmark::after { content: none !important; }
+
+.messa-wordmark__img { display: block; height: 100%; width: auto; }
+/* Se ve la tinta oscura, que es la de las pantallas claras. La variante
+   hueso sólo aparece cuando el fondo es oscuro de verdad. */
+.messa-wordmark__img--clara { display: none; }
+
+html[data-menu-theme="dark"] .messa-wordmark__img--oscura,
+html[data-admin-theme="dark"] .messa-wordmark__img--oscura { display: none; }
+html[data-menu-theme="dark"] .messa-wordmark__img--clara,
+html[data-admin-theme="dark"] .messa-wordmark__img--clara { display: block; }
+
+/* El panel arranca oscuro salvo que el tema claro esté puesto a propósito. */
+html:not([data-admin-theme="light"]) .admin-shell .messa-wordmark__img--oscura { display: none; }
+html:not([data-admin-theme="light"]) .admin-shell .messa-wordmark__img--clara { display: block; }
+
+/* Tamaños según dónde aparece. */
+.messa-home__nav .messa-wordmark { height: 24px; }
+.messa-login__wordmark, .messa-legal__header .messa-wordmark { height: 32px; }
+.messa-entrada .messa-wordmark { height: 28px; }
+.admin-dock-brand .messa-wordmark { height: 19px; }

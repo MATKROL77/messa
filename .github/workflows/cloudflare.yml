@@ -1,34 +1,39 @@
-name: Despliegue completo en Cloudflare
+name: Despliegue en Cloudflare
 
-# Publica MESSA con TODO funcionando: login con bcrypt, cobro real con Mercado
+# Publica MESSA con todo funcionando: login con bcrypt, cobro real con Mercado
 # Pago y códigos de mesa firmados en el servidor.
 #
-# Para usarlo alcanza con cargar UN secreto del repositorio en
+# Hace falta UN secreto del repositorio, en
 # Settings → Secrets and variables → Actions → New repository secret:
 #
-#   CLOUDFLARE_API_TOKEN   token con permiso "Edit Cloudflare Workers"
+#   CLOUDFLARE_API_TOKEN   token con el permiso "Account → Workers Scripts → Edit"
 #
-# El id de cuenta ya viene por defecto abajo (no es un dato secreto). Si querés
-# usar otra cuenta, cargalo como secreto CLOUDFLARE_ACCOUNT_ID y tiene prioridad.
+# El id de cuenta va abajo por defecto: no es un dato secreto, es el número que
+# identifica la cuenta. Si algún día usás otra, cargalo como secreto
+# CLOUDFLARE_ACCOUNT_ID y tiene prioridad.
 #
-# Este workflow es una alternativa a Workers Builds (la conexión directa de
-# Cloudflare con GitHub). Sirve sobre todo para diagnosticar: sus registros se
-# leen desde la pestaña Actions, mientras que los de Workers Builds sólo se ven
-# dentro del panel de Cloudflare.
+# Las variables del Worker (SESSION_SECRET, CREATOR_PASSWORD_HASH, la clave de
+# Supabase…) NO van acá: se cargan una sola vez en Cloudflare con
+# `wrangler secret put`. Ver LEEME.md.
 #
-# Las variables del Worker (SESSION_SECRET, CREATOR_PASSWORD_HASH, etc.) se
-# cargan aparte, en el panel de Cloudflare. Ver LEEME.md.
+# Este workflow reemplaza a Workers Builds, la conexión directa de Cloudflare
+# con GitHub. Si esa conexión sigue viva y apunta a otro Worker, va a seguir
+# fallando por su cuenta: hay que desconectarla desde el panel de Cloudflare.
 
 on:
-  workflow_dispatch:
   push:
     branches: [main, claude/messa-review-polish-wmd693]
+  workflow_dispatch:
+
+# Un push mientras otro está desplegando cancela el anterior: publicar una
+# versión vieja encima de una nueva es peor que no publicar.
+concurrency:
+  group: cloudflare-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  desplegar:
     runs-on: ubuntu-latest
-    # Sin el token no hay nada que desplegar: se salta en vez de fallar en rojo.
-    if: github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ENABLED == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -48,8 +53,30 @@ jobs:
           pnpm exec tsc --noEmit
           pnpm lint
 
+      # Antes esto estaba detrás de una variable del repositorio que nunca se
+      # creó, así que cada push se salteaba en silencio y nada se publicaba.
+      # Ahora la condición es la única que importa de verdad: si está el token,
+      # se despliega. Si no, se avisa y se termina en verde, porque un rojo acá
+      # sólo manda un mail que no explica qué hacer.
+      - name: ¿Está el token?
+        id: token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::Falta el secreto CLOUDFLARE_API_TOKEN. Cargalo en Settings → Secrets and variables → Actions y volvé a correr este workflow."
+          fi
+
       - name: Construir y desplegar
+        if: steps.token.outputs.hay == 'si'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || 'ea060ae701e304a6d55624287327abdd' }}
         run: pnpm cf:deploy
+
+      - name: Confirmar
+        if: steps.token.outputs.hay == 'si'
+        run: echo "Publicado en https://messa.matiascolimodio.workers.dev"
