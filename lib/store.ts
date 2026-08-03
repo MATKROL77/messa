@@ -25,10 +25,10 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export type PermisoAdmin = 'resumen' | 'carta' | 'salon' | 'pedidos' | 'inventario' | 'reservas' | 'finanzas' | 'cobros' | 'caja' | 'delivery' | 'fidelidad' | 'sucursales' | 'usuarios' | 'identidad' | 'bitacora'
+export type PermisoAdmin = 'resumen' | 'carta' | 'salon' | 'pedidos' | 'inventario' | 'reservas' | 'finanzas' | 'cobros' | 'caja' | 'delivery' | 'fidelidad' | 'sucursales' | 'usuarios' | 'identidad' | 'bitacora' | 'plataforma'
 
 const PERMISOS_ADMIN_DEFAULT: Record<RolUsuario, PermisoAdmin[]> = {
-  creator: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad', 'bitacora'],
+  creator: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad', 'bitacora', 'plataforma'],
   admin: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad', 'bitacora'],
   // El gerente maneja el turno completo —incluida la caja y la fidelidad— pero
   // no toca la identidad de la marca, las sucursales ni el equipo.
@@ -210,6 +210,8 @@ interface AppStore {
    * que el comensal —que no tiene sesión— pueda decir de qué local es su QR.
    */
   organizacionActualId: string
+  /** Fija a qué restaurante pertenece este dispositivo (lo pone /r/<slug>). */
+  setOrganizacionActual: (id: string) => void
   deliveryIntegraciones: ConfigDelivery[]
   gastos: Gasto[]
   costoInsumosConsumidoHistorico: number
@@ -1241,6 +1243,13 @@ export const useStore = create<AppStore>()(
       marcarNotificacionLeida: (id) => set(s => ({ notificaciones: s.notificaciones.map(n => n.id === id ? { ...n, leida: true } : n) })),
       limpiarNotificaciones: () => set({ notificaciones: [] }),
 
+      setOrganizacionActual: (id) => set(estado => (
+        estado.organizacionActualId === id
+          ? {}
+          // Cambiar de restaurante invalida todo lo que había en el
+          // dispositivo: la carta, las mesas y el carrito son de otro local.
+          : { organizacionActualId: id, carrito: [], sesion: null }
+      )),
       setSesionAdmin: (s) => set({ sesionAdmin: s }),
 
       logoutAdmin: async () => {

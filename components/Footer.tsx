@@ -1,3 +1,4 @@
+import Link from 'next/link'
 /**
  * Pie de las pantallas públicas. Existía como componente pero no se usaba en
  * ninguna página, y traía colores fijos del tema oscuro anterior (invisible
@@ -11,6 +12,10 @@ export default function Footer({ nombre }: { nombre?: string }) {
       <p>
         Creado por <b>Matías Colimodio</b> ·{' '}
         <a href="mailto:matiascolimodio@gmail.com">matiascolimodio@gmail.com</a>
+        {' · '}
+        {/* Obligatorio, no decorativo: se guardan nombres, teléfonos y mails
+            de comensales, y eso cae bajo la ley de datos personales. */}
+        <Link href="/legal">Términos y privacidad</Link>
       </p>
     </footer>
   )

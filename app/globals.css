@@ -5626,7 +5626,7 @@ html[data-admin-theme="light"] .messa-sin-conexion {
   box-shadow: 0 18px 40px rgba(68, 57, 39, .16);
 }
 html[data-admin-theme="light"] .messa-sin-conexion p { color: #35301f; }
-html[data-admin-theme="light"] .messa-sin-conexion small { color: #726party; }
+
 html[data-admin-theme="light"] .messa-sin-conexion small { color: #726a56; }
 html[data-admin-theme="light"] .messa-sin-conexion__icono { background: color-mix(in srgb, #b9821f 16%, transparent); color: #93661a; }
 
@@ -5663,3 +5663,133 @@ html[data-admin-theme="light"] .messa-sin-conexion__icono { background: color-mi
 }
 .mesa-seguir-pidiendo button:active { transform: scale(.96); }
 .mesa-seguir-pidiendo button svg { color: currentColor; }
+
+/* ── Cartel "Selección del chef" ──
+   El plato de la portada es una forma orgánica con `overflow: hidden` y
+   esquinas muy redondeadas. El cartel estaba anclado abajo a la izquierda,
+   justo donde la curva se mete hacia adentro: el borde de la tarjeta quedaba
+   cortado y la primera letra del plato, comida. Centrado queda en la parte
+   más ancha de la forma, donde nada lo recorta. */
+.messa-home__dish-label {
+  align-items: center;
+  bottom: 22px;
+  left: 50%;
+  /* Nunca más ancho que la zona segura de la forma. */
+  max-width: min(86%, 340px);
+  padding: 12px 18px;
+  text-align: center;
+  transform: translateX(-50%);
+}
+.messa-home__dish-label span { line-height: 1.2; }
+.messa-home__dish-label strong {
+  /* Un nombre largo baja de renglón en vez de desbordar el cartel. */
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .messa-home__dish-label { bottom: 16px; max-width: 82%; padding: 10px 15px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESTAURANTES · LEGALES · ENTRADA POR URL
+   ══════════════════════════════════════════════════════════════ */
+
+.messa-org-lista { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.messa-org {
+  align-items: center;
+  background: color-mix(in srgb, var(--admin-surface) 55%, transparent);
+  border: 1px solid var(--admin-border);
+  border-radius: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+.messa-org__quien { align-items: center; display: flex; gap: 13px; min-width: 0; }
+.messa-org__inicial {
+  align-items: center;
+  background: linear-gradient(150deg, var(--messa-accent), color-mix(in srgb, var(--messa-accent) 60%, #000));
+  border-radius: 14px;
+  color: #1b1a16;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 17px;
+  font-weight: 700;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+.messa-org__nombre { align-items: center; color: var(--admin-text); display: flex; flex-wrap: wrap; font-size: 14.5px; font-weight: 600; gap: 8px; margin: 0; }
+.messa-org__slug { color: var(--admin-text-muted); font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; margin: 3px 0 0; }
+.messa-org__acciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.messa-org__plan {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 560;
+  padding: 7px 13px;
+  transition: background .28s var(--ios-ease, cubic-bezier(.32,.72,0,1)), color .28s;
+}
+.messa-org__plan:hover:not(:disabled) { background: color-mix(in srgb, var(--admin-surface) 80%, transparent); color: var(--admin-text); }
+/* El plan vigente se marca lleno y sin acción: es estado, no botón. */
+.messa-org__plan.is-actual { background: var(--messa-accent); border-color: var(--messa-accent); color: #1b1a16; cursor: default; }
+
+.messa-form-grid { display: flex; flex-direction: column; gap: 15px; }
+.messa-form-grid label { display: flex; flex-direction: column; gap: 6px; }
+.messa-form-grid label > span { color: var(--admin-text-soft); font-size: 12px; font-weight: 560; }
+.messa-form-hint { color: var(--admin-text-muted); font-size: 11.5px; line-height: 1.45; }
+.messa-form-hint b { color: var(--messa-accent); font-family: ui-monospace, Menlo, monospace; }
+.messa-cargando { color: var(--admin-text-muted); font-size: 13px; padding: 20px 0; text-align: center; }
+.messa-aviso-error {
+  background: color-mix(in srgb, #d9737a 14%, transparent);
+  border-radius: 14px;
+  color: var(--admin-text);
+  font-size: 12.5px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+}
+
+/* ── Entrada por URL: se ve un instante, tiene que ser impecable igual ── */
+.messa-entrada {
+  align-items: center;
+  background: var(--messa-canvas, #f5f2ea);
+  color: var(--messa-ink, #171612);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 100svh;
+  padding: 32px 24px;
+  text-align: center;
+}
+.messa-entrada h1 { font-size: 22px; letter-spacing: -.02em; margin: 8px 0 0; }
+.messa-entrada p { color: var(--messa-muted, #79736a); font-size: 14px; margin: 0; }
+.messa-entrada a { color: var(--messa-accent, #c69a3f); font-size: 13px; font-weight: 600; margin-top: 6px; text-decoration: none; }
+
+/* ── Legales: una columna de lectura, nada más ── */
+.messa-legal {
+  background: var(--messa-canvas, #f5f2ea);
+  color: var(--messa-ink, #171612);
+  margin: 0 auto;
+  max-width: 720px;
+  min-height: 100svh;
+  padding: 34px 24px 70px;
+}
+.messa-legal__header { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; margin-bottom: 40px; }
+.messa-legal__header a { text-decoration: none; }
+.messa-legal__header p { color: var(--messa-muted, #79736a); font-size: 11.5px; margin: 0; }
+.messa-legal h1 { font-size: clamp(30px, 6vw, 42px); letter-spacing: -.035em; margin: 0 0 14px; }
+.messa-legal__intro { color: var(--messa-muted, #79736a); font-size: 15px; line-height: 1.65; margin: 0 0 34px; }
+.messa-legal section { border-top: 1px solid var(--messa-line, rgba(33,30,23,.11)); padding: 26px 0 0; }
+.messa-legal h2 { font-size: 17px; letter-spacing: -.02em; margin: 0 0 12px; }
+.messa-legal p { font-size: 14px; line-height: 1.7; margin: 0 0 12px; }
+.messa-legal ul { display: flex; flex-direction: column; gap: 9px; margin: 0 0 12px; padding-left: 20px; }
+.messa-legal li { font-size: 14px; line-height: 1.65; }
+.messa-legal__nota { color: var(--messa-muted, #79736a); font-size: 12.5px !important; }
+.messa-legal__footer { border-top: 1px solid var(--messa-line, rgba(33,30,23,.11)); margin-top: 34px; padding-top: 22px; }
+.messa-legal__footer a { color: var(--messa-accent, #c69a3f); font-size: 13px; font-weight: 600; text-decoration: none; }

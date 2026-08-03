@@ -16,6 +16,7 @@ import { useSyncOperativo } from '@/lib/use-sync-operativo'
 
 const PERMISO_RUTA: { prefix: string; permiso: PermisoAdmin }[] = [
   { prefix: '/admin/bitacora', permiso: 'bitacora' },
+  { prefix: '/admin/restaurantes', permiso: 'plataforma' },
   { prefix: '/admin/tema', permiso: 'identidad' },
   { prefix: '/admin/fidelidad', permiso: 'fidelidad' },
   { prefix: '/admin/usuarios', permiso: 'usuarios' },
@@ -61,6 +62,7 @@ const GESTION: DockItem[] = [
   { href: '/admin/usuarios', label: 'Usuarios', Icon: UsersRound },
   { href: '/admin/tema', label: 'Identidad', Icon: Palette },
   { href: '/admin/bitacora', label: 'Bitácora', Icon: ScrollText },
+  { href: '/admin/restaurantes', label: 'Restaurantes', Icon: Building2 },
 ]
 
 function isCurrentPath(pathname: string, item: DockItem) {

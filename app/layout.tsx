@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import ThemeApplier from '@/components/ThemeApplier'
+import CapturaErrores from '@/components/captura-errores'
 
 export const metadata: Metadata = {
   title: 'MESSA — Dining, made precise',
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeApplier />
+        <CapturaErrores />
         <div className="app-shell">{children}</div>
       </body>
     </html>
