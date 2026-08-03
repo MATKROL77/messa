@@ -35,6 +35,9 @@ const PERMISOS_ADMIN_DEFAULT: Record<RolUsuario, PermisoAdmin[]> = {
   gerente: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad'],
   editor: ['resumen', 'carta', 'inventario'],
   staff: ['resumen', 'salon', 'pedidos', 'reservas'],
+  // La vitrina entra a todo el panel del restaurante. Lo único que NO ve es
+  // la administración de la plataforma: ahí viven los datos de otros clientes.
+  vitrina: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad', 'bitacora'],
 }
 
 const CATEGORIAS_MESSA_NUEVAS = new Set(['sushi', 'cafes'])
@@ -398,7 +401,7 @@ export const useStore = create<AppStore>()(
       pagosParciales: {},
       elementosPlano: [],
       permisosAdmin: PERMISOS_ADMIN_DEFAULT,
-      permisosVersion: 4,
+      permisosVersion: 5,
 
         initStore: () => {
           set(state => ({
@@ -417,9 +420,16 @@ export const useStore = create<AppStore>()(
               ...(state.permisosVersion < 2 ? { admin: PERMISOS_ADMIN_DEFAULT.admin } : {}),
               // v4 trae la bitácora: se la damos a quien ya tenía control total.
               ...(state.permisosVersion < 4 ? { creator: PERMISOS_ADMIN_DEFAULT.creator, admin: PERMISOS_ADMIN_DEFAULT.admin } : {}),
+              // Los rangos que se agregaron después de guardar la matriz se
+              // reponen siempre, no por número de versión: un navegador con
+              // datos viejos los dejaría sin ningún acceso, y el síntoma
+              // ("no tenés permisos") no dice de dónde viene.
               gerente: state.permisosAdmin?.gerente || PERMISOS_ADMIN_DEFAULT.gerente,
+              vitrina: state.permisosAdmin?.vitrina || PERMISOS_ADMIN_DEFAULT.vitrina,
             },
-            permisosVersion: 3,
+            // Antes quedaba clavado en 3 y las migraciones de la 4 se repetían
+            // en cada arranque. Ahora sí avanza.
+            permisosVersion: 5,
           }))
         },
 
@@ -1046,7 +1056,16 @@ export const useStore = create<AppStore>()(
             ...(payload.propinaConfig ? { propinaConfig: payload.propinaConfig as PropinaConfig } : {}),
             ...(payload.fidelidadConfig ? { fidelidadConfig: payload.fidelidadConfig as FidelidadConfig } : {}),
             ...(Array.isArray(payload.recompensasFidelidad) ? { recompensasFidelidad: payload.recompensasFidelidad as RecompensaFidelidad[] } : {}),
-            ...(payload.permisosAdmin ? { permisosAdmin: payload.permisosAdmin as Record<RolUsuario, PermisoAdmin[]> } : {}),
+            // Se funde SOBRE los de fábrica, no los reemplaza: un rango
+            // agregado en una versión nueva no existe en la copia guardada, y
+            // sustituir la matriz entera lo dejaría sin ningún acceso. El
+            // síntoma —"no tenés permisos"— no dice de dónde viene.
+            ...(payload.permisosAdmin ? {
+              permisosAdmin: {
+                ...PERMISOS_ADMIN_DEFAULT,
+                ...(payload.permisosAdmin as Record<RolUsuario, PermisoAdmin[]>),
+              },
+            } : {}),
             ...(Array.isArray(payload.deliveryIntegraciones) ? { deliveryIntegraciones: payload.deliveryIntegraciones as ConfigDelivery[] } : {}),
             ...(Array.isArray(payload.sucursales) ? { sucursales: payload.sucursales as Sucursal[] } : {}),
           }

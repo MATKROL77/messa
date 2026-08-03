@@ -5920,3 +5920,55 @@ html[data-menu-theme="dark"] select option:disabled {
 .messa-order-card__items { align-content: start; gap: 9px; }
 /* El aire sobrante lo absorbe la franja de fotos, no la lista. */
 .messa-order-card__media { margin-top: auto; }
+
+/* ── Modo demostración del portfolio ──
+   Mismo lugar y misma forma que el aviso de sin conexión, en azul en vez
+   de ámbar: uno avisa de un problema, este de un contexto. */
+.messa-vitrina {
+  align-items: center;
+  animation: messa-baja-aviso .42s cubic-bezier(.32, .72, 0, 1);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: color-mix(in srgb, #1e2c3a 90%, transparent);
+  border: 1px solid color-mix(in srgb, #8fb8d9 38%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .32);
+  display: flex;
+  gap: 11px;
+  left: 50%;
+  max-width: min(460px, calc(100vw - 24px));
+  padding: 11px 15px;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  transform: translateX(-50%);
+  z-index: 59;
+}
+.messa-vitrina__icono {
+  align-items: center;
+  background: color-mix(in srgb, #8fb8d9 24%, transparent);
+  border-radius: 50%;
+  color: #bcd8ef;
+  display: flex;
+  flex: 0 0 auto;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+.messa-vitrina__icono svg { color: currentColor; }
+.messa-vitrina p { color: #e8f1f8; font-size: 12.5px; line-height: 1.45; margin: 0; }
+.messa-vitrina strong { font-weight: 620; }
+.messa-vitrina small { color: #a9c2d6; display: block; font-size: 11px; margin-top: 2px; }
+
+html[data-admin-theme="light"] .messa-vitrina {
+  background: color-mix(in srgb, #eef5fb 95%, transparent);
+  border-color: color-mix(in srgb, #3f6c93 30%, transparent);
+  box-shadow: 0 18px 40px rgba(40, 55, 70, .14);
+}
+html[data-admin-theme="light"] .messa-vitrina p { color: #1d2b36; }
+html[data-admin-theme="light"] .messa-vitrina small { color: #566a7a; }
+html[data-admin-theme="light"] .messa-vitrina__icono { background: color-mix(in srgb, #3f6c93 15%, transparent); color: #2f5d84; }
+
+/* Si además se cae la conexión, el aviso de red baja para no encimarse. */
+.messa-vitrina ~ .messa-sin-conexion { top: calc(env(safe-area-inset-top, 0px) + 74px); }
+
+@media (prefers-reduced-motion: reduce) { .messa-vitrina { animation: none; } }

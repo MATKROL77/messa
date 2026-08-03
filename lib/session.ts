@@ -14,7 +14,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 export interface SesionPayload {
   email: string
   nombre: string
-  rol: 'creator' | 'admin' | 'gerente' | 'editor' | 'staff'
+  rol: 'creator' | 'admin' | 'gerente' | 'editor' | 'staff' | 'vitrina'
   /**
    * El restaurante al que pertenece quien entra.
    *

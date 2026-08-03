@@ -201,6 +201,21 @@ async function unaVuelta() {
     const sucursalId = estado.sucursalActualId
     if (!sucursalId) return
 
+    // El panel espera a saber quién entró. La sesión se resuelve un instante
+    // después de montar, y sin esta espera la primera vuelta ya se traía los
+    // datos reales del restaurante —incluidos nombres y teléfonos de las
+    // reservas— antes de descubrir que quien está mirando es un visitante.
+    if (sync.incluirConfiguracion && !estado.sesionAdmin) return
+
+    // La vitrina del portfolio no sincroniza en ningún sentido.
+    //
+    // No alcanza con impedirle escribir: si siguiera trayendo, un visitante
+    // que cambia un precio lo vería volver atrás cuatro segundos después,
+    // porque la copia del servidor pisaría la suya. La demostración tiene que
+    // responder como el sistema real, y para eso su realidad es la de su
+    // propio navegador. Al cerrar la pestaña no queda nada.
+    if (estado.sesionAdmin?.rol === 'vitrina') return
+
     // Sólo se manda lo que cambió desde el último envío. Mandar todo en cada
     // vuelta funcionaría, pero haría que dos dispositivos se pisaran
     // reescribiendo lo mismo una y otra vez.

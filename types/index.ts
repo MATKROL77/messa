@@ -2,7 +2,12 @@ export type MesaEstado = 'libre' | 'ocupada' | 'pedido' | 'pagando' | 'pagada'
 // Rangos, de mayor a menor alcance. 'creator' sólo se define por variables de
 // entorno del servidor: no es asignable desde el backoffice, para que nadie
 // pueda escalar hasta control total creando una cuenta.
-export type RolUsuario = 'creator' | 'admin' | 'gerente' | 'editor' | 'staff'
+/**
+ * 'vitrina' es el modo demostración del portfolio: ve y toca todo, pero nada
+ * de lo que hace sale de su navegador. No es un rango del restaurante, es un
+ * visitante mirando cómo funciona.
+ */
+export type RolUsuario = 'creator' | 'admin' | 'gerente' | 'editor' | 'staff' | 'vitrina'
 export type MetodoPago = 'tarjeta' | 'transferencia' | 'mercadopago' | 'efectivo'
 export type OrigenPedido = 'mesa' | 'pedidosya' | 'rappi' | 'ubereats' | 'otro'
 export type PlataformaDelivery = 'pedidosya' | 'rappi' | 'ubereats' | 'otro'

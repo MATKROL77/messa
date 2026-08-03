@@ -9,6 +9,7 @@ import type { RolUsuario } from '@/types'
 import MessaWordmark from '@/components/messa-wordmark'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import AvisoConexion from '@/components/admin/aviso-conexion'
+import AvisoVitrina from '@/components/admin/aviso-vitrina'
 import { limpiarIconoLegacy } from '@/lib/utils'
 import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
 import { withBasePath } from '@/lib/base-path'
@@ -39,6 +40,7 @@ const ROL_LABEL: Record<RolUsuario, { label: string; color: string }> = {
   gerente: { label: 'Gerente', color: '#b3a4d9' },
   editor: { label: 'Editor', color: '#82bd99' },
   staff: { label: 'Staff', color: '#d4cdbf' },
+  vitrina: { label: 'Demostración', color: '#8fb8d9' },
 }
 
 type DockItem = { href: string; label: string; Icon: typeof LayoutDashboard; exact?: boolean }
@@ -181,6 +183,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="admin-shell">
       <div className="admin-ambient" aria-hidden="true" />
       <AvisoConexion />
+      <AvisoVitrina />
       {MODO_VISTA_PREVIA && (
         <p className="admin-preview-banner" role="status">
           Vista previa estática · datos de demostración, sin servidor. El login real, los pagos y los códigos de mesa firmados funcionan en el despliegue completo.

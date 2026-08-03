@@ -98,7 +98,14 @@ export async function POST(req: NextRequest) {
     organizacionId = organizacionPedida
   }
 
-  const entrantes = (body.entidades || [])
+  // La vitrina del portfolio mira y toca, pero no escribe. Se corta acá, en
+  // el servidor, y no sólo en la pantalla: es lo único que garantiza que un
+  // visitante curioso con las herramientas de desarrollo no pueda tocar los
+  // datos de un restaurante real. Sigue LEYENDO con normalidad, para que la
+  // demostración se vea viva.
+  const soloMira = sesionStaff?.rol === 'vitrina'
+
+  const entrantes = (soloMira ? [] : body.entidades || [])
     .filter(e => e && typeof e.id === 'string' && TIPOS.includes(e.tipo) && e.payload)
     .slice(0, MAX_ENTIDADES)
     // Un comensal sólo puede escribir sobre SU mesa y sobre pedidos de esa
