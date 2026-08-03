@@ -34,25 +34,73 @@ export default function CocinaPage() {
     .filter(pedido => filtro === 'activos' ? ['en_cocina', 'listo'].includes(pedido.estado) : pedido.estado === filtro)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [actuales, filtro])
 
+  /**
+   * Una comanda por MESA, no por teléfono.
+   *
+   * Cuatro personas sentadas juntas pedían desde sus cuatro celulares y a la
+   * cocina le entraban cuatro comandas de la misma mesa: hay que cocinarlas
+   * juntas igual, y salen juntas al salón. Se agrupan los pedidos que siguen
+   * vivos de una misma mesa.
+   *
+   * No se fusionan los pedidos guardados, sólo se muestran juntos. Cada uno
+   * conserva de qué teléfono vino, que es lo que permite después dividir la
+   * cuenta o anular lo de una sola persona.
+   *
+   * Los pedidos ya entregados no arrastran: si la mesa pide el postre una
+   * hora después, entra como comanda nueva, que es lo correcto.
+   */
+  const comandas = useMemo(() => {
+    const porMesa = new Map<string, Pedido[]>()
+    for (const pedido of filtrados) {
+      const grupo = porMesa.get(pedido.mesa_id)
+      if (grupo) grupo.push(pedido); else porMesa.set(pedido.mesa_id, [pedido])
+    }
+    return [...porMesa.values()].map(pedidos => {
+      const items = pedidos.flatMap(pedido => pedido.items)
+      return {
+        id: pedidos[0].id,
+        pedidos,
+        mesa_numero: pedidos[0].mesa_numero,
+        origen: pedidos[0].origen,
+        // El reloj corre desde la PRIMERA ronda: es lo que lleva esperando la
+        // mesa, no lo que lleva esperando el último en pedir.
+        created_at: pedidos[0].created_at,
+        // El estado del conjunto es el del más atrasado: si falta un plato,
+        // la mesa no está lista.
+        estado: pedidos.some(pedido => pedido.estado === 'en_cocina') ? 'en_cocina' : pedidos[0].estado,
+        items,
+        total: pedidos.reduce((suma, pedido) => suma + pedido.total, 0),
+      }
+    }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  }, [filtrados])
+
   const showToast = (mensaje: string) => {
     setToast(mensaje)
     window.setTimeout(() => setToast(''), 2200)
   }
 
+  /** Las rondas de una mesa se marcan juntas: salen juntas al salón. */
+  const rondasDe = (pedido: Pedido) =>
+    comandas.find(comanda => comanda.pedidos.some(item => item.id === pedido.id))?.pedidos || [pedido]
+
   const listo = (pedido: Pedido) => {
-    marcarPedidoListo(pedido.id)
+    const rondas = rondasDe(pedido)
+    rondas.forEach(item => marcarPedidoListo(item.id))
     setSeleccionado(null)
-    showToast(`Pedido de mesa ${pedido.mesa_numero} listo`)
+    showToast(`Mesa ${pedido.mesa_numero} lista${rondas.length > 1 ? ` (${rondas.length} rondas)` : ''}`)
   }
   const entregar = (pedido: Pedido) => {
-    marcarPedidoEntregado(pedido.id)
+    const rondas = rondasDe(pedido)
+    rondas.forEach(item => marcarPedidoEntregado(item.id))
     setSeleccionado(null)
-    showToast(`Pedido de mesa ${pedido.mesa_numero} entregado`)
+    showToast(`Mesa ${pedido.mesa_numero} entregada`)
   }
   const cancelar = (pedido: Pedido) => {
+    // Anular sí es por pedido, no por mesa: se anula lo de una persona, no la
+    // comida de los otros tres.
     cancelarPedido(pedido.id)
     setSeleccionado(null)
-    showToast('Pedido cancelado')
+    showToast('Pedido anulado')
   }
 
   return (
@@ -73,18 +121,30 @@ export default function CocinaPage() {
         </div>
 
         <AdminPanel eyebrow="Flujo del servicio" title={filtro === 'activos' ? 'Pedidos activos' : filtro.replace('_', ' ')} detail="Abrí una comanda para ver ingredientes, notas y acciones.">
-          {filtrados.length ? <div className="messa-order-board">{filtrados.map(pedido => {
-            const minutos = tiempoEnMinutos(pedido.created_at)
-            const tone = pedido.estado === 'listo' ? 'green' : minutos >= 20 ? 'rose' : minutos >= 12 ? 'amber' : 'blue'
-            const tiempoObjetivo = Math.max(...pedido.items.map(item => item.plato.tiempo_preparacion_minutos || 15), 15)
+          {comandas.length ? <div className="messa-order-board">{comandas.map(comanda => {
+            const minutos = tiempoEnMinutos(comanda.created_at)
+            const tone = comanda.estado === 'listo' ? 'green' : minutos >= 20 ? 'rose' : minutos >= 12 ? 'amber' : 'blue'
+            const tiempoObjetivo = Math.max(...comanda.items.map(item => item.plato.tiempo_preparacion_minutos || 15), 15)
             return (
-              <button type="button" className={`messa-order-card messa-order-card--${tone}`} key={pedido.id} onClick={() => setSeleccionado(pedido)}>
-                <header><span><b>Mesa {pedido.mesa_numero}</b><small>{pedido.origen === 'mesa' ? 'Salón' : pedido.origen}</small></span><AdminStatus tone={tone}>{pedido.estado === 'en_cocina' ? `${minutos} min` : 'Listo'}</AdminStatus></header>
-                <div className="messa-order-card__media" aria-hidden="true">
-                  {pedido.items.slice(0, 3).map(item => <DishMedia key={item.id} plato={item.plato} />)}
+              <button type="button" className={`messa-order-card messa-order-card--${tone}`} key={comanda.id} onClick={() => setSeleccionado(comanda.pedidos[0])}>
+                <header>
+                  <span>
+                    <b>Mesa {comanda.mesa_numero}</b>
+                    <small>{comanda.origen === 'mesa' ? 'Salón' : comanda.origen}{comanda.pedidos.length > 1 ? ` · ${comanda.pedidos.length} rondas` : ''}</small>
+                  </span>
+                  <AdminStatus tone={tone}>{comanda.estado === 'en_cocina' ? `${minutos} min` : 'Listo'}</AdminStatus>
+                </header>
+                <div className="messa-order-card__items">
+                  {comanda.items.slice(0, 5).map(item => <span key={item.id}><strong>{item.cantidad}×</strong>{item.plato.nombre}</span>)}
+                  {comanda.items.length > 5 && <small>+{comanda.items.length - 5} ítems más</small>}
                 </div>
-                <div className="messa-order-card__items">{pedido.items.slice(0, 4).map(item => <span key={item.id}><strong>{item.cantidad}×</strong>{item.plato.nombre}</span>)}{pedido.items.length > 4 && <small>+{pedido.items.length - 4} ítems más</small>}</div>
-                <footer><span><Clock3 size={13} /> Objetivo {tiempoObjetivo} min</span><strong>{formatPrecio(pedido.total)}</strong></footer>
+                {/* Las fotos van DEBAJO de la lista y no flotando encima: antes
+                    estaban en posición absoluta y tapaban los nombres de los
+                    platos, que es justo lo que la cocina necesita leer. */}
+                <div className="messa-order-card__media" aria-hidden="true">
+                  {comanda.items.slice(0, 3).map(item => <DishMedia key={item.id} plato={item.plato} />)}
+                </div>
+                <footer><span><Clock3 size={13} /> Objetivo {tiempoObjetivo} min</span><strong>{formatPrecio(comanda.total)}</strong></footer>
               </button>
             )
           })}</div> : <AdminEmpty Icon={ChefHat} title="La cocina está al día" description="No hay pedidos para el filtro seleccionado." />}

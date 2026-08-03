@@ -5831,3 +5831,92 @@ html:not([data-admin-theme="light"]) .admin-shell .messa-wordmark__img--clara { 
 .messa-login__wordmark, .messa-legal__header .messa-wordmark { height: 32px; }
 .messa-entrada .messa-wordmark { height: 28px; }
 .admin-dock-brand .messa-wordmark { height: 19px; }
+
+/* ══════════════════════════════════════════════════════════════
+   OPCIONES DE LOS DESPLEGABLES
+   La lista que abre un <select> la dibuja el sistema operativo, no la
+   página: hereda el color del texto pero NO el fondo, así que sobre el
+   panel oscuro quedaban letras casi blancas sobre el blanco del menú.
+   Ilegibles. Hay que fijar los dos colores a mano, siempre.
+   ══════════════════════════════════════════════════════════════ */
+
+select option,
+select optgroup {
+  background-color: #ffffff;
+  color: #1a1815;
+  font-weight: 500;
+}
+
+html[data-admin-theme="dark"] select option,
+html[data-admin-theme="dark"] select optgroup,
+html[data-menu-theme="dark"] select option,
+html[data-menu-theme="dark"] select optgroup {
+  background-color: #262320;
+  color: #f2ede3;
+}
+
+/* Una opción deshabilitada tiene que leerse igual: si no se ve, nadie
+   entiende por qué no la puede elegir. Se atenúa, no se borra. */
+select option:disabled {
+  color: #8d8578;
+}
+html[data-admin-theme="dark"] select option:disabled,
+html[data-menu-theme="dark"] select option:disabled {
+  color: #7d7666;
+}
+
+/* El campo en sí, dentro del panel: mismo trato que el resto de los
+   controles, con la flecha dibujada por nosotros para que no dependa
+   del estilo que ponga cada navegador. */
+.admin-shell select:not(.admin-branch-select),
+.messa-sheet select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: color-mix(in srgb, var(--admin-surface) 70%, transparent);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 17px center, right 11px center;
+  background-repeat: no-repeat;
+  background-size: 6px 6px, 6px 6px;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  color: var(--admin-text);
+  cursor: pointer;
+  font-size: 13.5px;
+  min-height: 46px;
+  padding: 0 40px 0 14px;
+  width: 100%;
+}
+.admin-shell select:not(.admin-branch-select):focus-visible,
+.messa-sheet select:focus-visible { border-color: var(--messa-accent); }
+
+/* ── Comanda de cocina: las fotos abajo, no encima del texto ──
+   Estaban en posición absoluta sobre la tarjeta y tapaban los nombres de
+   los platos. En una cocina eso no es un detalle estético: el nombre del
+   plato es lo único que hay que leer. */
+.messa-order-card__media {
+  align-items: center;
+  bottom: auto;
+  display: flex;
+  gap: 0;
+  height: 78px;
+  justify-content: center;
+  margin: 4px 0 12px;
+  overflow: visible;
+  pointer-events: none;
+  position: static;
+  right: auto;
+  width: 100%;
+}
+.messa-order-card__media .dish-media { flex: 0 0 74px; height: 74px; }
+.messa-order-card__media .dish-media + .dish-media { margin-left: -22px; }
+/* La lista recupera el ancho completo, que antes cedía a las fotos. */
+.messa-order-card__items { margin: 14px 0 0; }
+.messa-order-card__items > span { font-size: 11.5px; grid-template-columns: 26px 1fr; }
+.messa-order-card__items > span strong { font-weight: 650; }
+.messa-order-card header small { font-size: 10px; }
+/* Los renglones se juntan arriba en vez de repartirse por toda la altura:
+   una grilla estira sus filas para llenar el alto disponible, y con dos
+   platos quedaban separados por medio centímetro de nada. */
+.messa-order-card__items { align-content: start; gap: 9px; }
+/* El aire sobrante lo absorbe la franja de fotos, no la lista. */
+.messa-order-card__media { margin-top: auto; }
