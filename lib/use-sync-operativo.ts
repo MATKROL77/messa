@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { useStore } from '@/lib/store'
 import { withBasePath } from '@/lib/base-path'
 import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
@@ -27,7 +27,7 @@ import { accesoRecordado } from '@/lib/acceso-mesa'
 
 const INTERVALO_MS = 4000
 
-type TipoEntidad = 'mesa' | 'pedido' | 'llamado' | 'elemento' | 'carta' | 'stock' | 'agenda' | 'finanzas' | 'ajustes'
+type TipoEntidad = 'mesa' | 'pedido' | 'llamado' | 'elemento' | 'bitacora' | 'carta' | 'stock' | 'agenda' | 'finanzas' | 'ajustes'
 interface Entidad { id: string; tipo: TipoEntidad; payload: unknown; updated_at: string }
 
 /** Dominios que se comparten como un paquete entero, no entidad por entidad. */
@@ -48,6 +48,82 @@ function huella(valor: unknown): string {
 function selloDe(item: { updated_at?: string; created_at?: string }): string {
   return item.updated_at || item.created_at || new Date(0).toISOString()
 }
+
+/**
+ * Estado de la conexión con el resto del local.
+ *
+ * El wifi de un restaurante se cae, y cuando eso pasa la app sigue andando
+ * contra el almacenamiento del dispositivo: nada se pierde, todo se reintenta
+ * solo en la próxima vuelta. Pero el mozo tiene que ENTERARSE, o va a creer
+ * que la cocina ya vio su pedido cuando todavía no salió de su teléfono.
+ *
+ * Se avisa recién a la tercera vuelta fallada (unos 12 segundos). Un corte de
+ * un segundo no es noticia, y un cartel que parpadea se vuelve ruido que
+ * nadie mira.
+ */
+const FALLOS_PARA_AVISAR = 3
+
+export interface EstadoSync {
+  conectado: boolean
+  /** Cuántos cambios están esperando para subir. */
+  pendientes: number
+  ultimoContacto: string | null
+}
+
+const conexion = { fallos: 0, pendientes: 0, ultimoContacto: null as string | null }
+const oyentes = new Set<(estado: EstadoSync) => void>()
+
+function estadoActual(): EstadoSync {
+  return {
+    conectado: conexion.fallos < FALLOS_PARA_AVISAR,
+    pendientes: conexion.pendientes,
+    ultimoContacto: conexion.ultimoContacto,
+  }
+}
+
+function anunciar() {
+  const estado = estadoActual()
+  oyentes.forEach(oyente => oyente(estado))
+}
+
+function marcarVuelta(ok: boolean, pendientes: number) {
+  conexion.pendientes = pendientes
+  if (ok) {
+    conexion.fallos = 0
+    conexion.ultimoContacto = new Date().toISOString()
+  } else {
+    conexion.fallos += 1
+  }
+  anunciar()
+}
+
+/**
+ * Estado de la conexión, para pintarlo en pantalla.
+ *
+ * Se lee con `useSyncExternalStore` y no con un `useEffect` que copie el valor
+ * a un estado local: el ciclo de sincronización vive fuera de React y puede
+ * cambiar entre que el componente se dibuja y que se suscribe. Con la copia
+ * manual, ese hueco mostraba "conectado" un instante después de haberse caído.
+ */
+let instantanea = estadoActual()
+
+function suscribir(avisar: () => void) {
+  const oyente = (estado: EstadoSync) => { instantanea = estado; avisar() }
+  oyentes.add(oyente)
+  return () => { oyentes.delete(oyente) }
+}
+
+export function useEstadoSync(): EstadoSync {
+  return useSyncExternalStore(
+    suscribir,
+    () => instantanea,
+    // En el servidor no hay ciclo: se dibuja como conectado y nunca aparece el
+    // aviso en el HTML inicial, que sería un parpadeo falso al cargar.
+    () => SIN_CONEXION_INICIAL,
+  )
+}
+
+const SIN_CONEXION_INICIAL: EstadoSync = { conectado: true, pendientes: 0, ultimoContacto: null }
 
 /**
  * El ciclo vive a nivel de módulo, no dentro del componente.
@@ -117,6 +193,9 @@ function recuperar() {
 async function unaVuelta() {
   if (sync.enVuelo) return
   sync.enVuelo = true
+  // Se declara acá afuera para que el `catch` sepa cuántos cambios quedaron
+  // esperando: es el número que ve el mozo en el aviso de sin conexión.
+  let sinSubir = 0
   try {
     const estado = useStore.getState()
     const sucursalId = estado.sucursalActualId
@@ -136,6 +215,10 @@ async function unaVuelta() {
     estado.pedidos.filter(p => p.sucursal_id === sucursalId).forEach(p => agregar('pedido', p.id, p))
     estado.llamadosMozo.forEach(l => agregar('llamado', l.id, l))
     estado.elementosPlano.filter(e => e.sucursal_id === sucursalId).forEach(e => agregar('elemento', e.id, e))
+    // La bitácora va entidad por entidad, nunca como paquete: es un registro
+    // que sólo crece, y mandarlo entero dejaría que el último dispositivo en
+    // hablar borrara lo que anotaron los demás.
+    estado.bitacora.filter(e => e.sucursal_id === sucursalId).forEach(e => agregar('bitacora', e.id, e))
 
     // Carta, stock, agenda, finanzas y ajustes: sólo desde el panel, y sólo
     // cuando cambiaron de verdad. Van con el id de la sucursal para que dos
@@ -165,21 +248,24 @@ async function unaVuelta() {
     }
 
     const aEnviar = sync.yaTrajo ? candidatas : []
+    sinSubir = aEnviar.length
 
     const respuesta = await fetch(withBasePath('/api/sync'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sucursalId,
+        organizacionId: estado.organizacionActualId,
         desde: sync.desde,
         entidades: aEnviar,
         // Credencial del comensal cuando no hay sesión de equipo.
         ...(sync.mesaId ? { mesaId: sync.mesaId, codigo: accesoRecordado(sync.mesaId) || '' } : {}),
       }),
     })
-    if (!respuesta.ok) return
+    if (!respuesta.ok) { marcarVuelta(false, aEnviar.length); return }
     const datos = await respuesta.json() as { ok?: boolean; cambios?: Entidad[]; ahora?: string }
-    if (!datos.ok) return
+    if (!datos.ok) { marcarVuelta(false, aEnviar.length); return }
+    marcarVuelta(true, 0)
 
     aEnviar.forEach(e => sync.enviadas.set(`${e.tipo}:${e.id}`, e.updated_at))
     if (datos.ahora) sync.desde = datos.ahora
@@ -230,7 +316,8 @@ async function unaVuelta() {
     }
   } catch {
     // Sin red o sin base: se reintenta en la próxima vuelta. La app sigue
-    // andando con el estado local.
+    // andando con el estado local, y nada de lo pendiente se descarta.
+    marcarVuelta(false, sinSubir)
   } finally {
     sync.enVuelo = false
   }

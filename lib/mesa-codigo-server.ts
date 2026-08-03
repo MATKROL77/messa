@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto'
+import { ORGANIZACION_POR_DEFECTO } from '@/lib/session'
 import { ALFABETO, LARGO_CODIGO, MAX_VERSION_CODIGO, normalizarCodigo } from '@/lib/mesa-codigo'
 
 /**
@@ -30,9 +31,16 @@ export function hayClaveDeCodigos(): boolean {
   return Boolean(process.env.MESSA_CODIGO_SEED || process.env.SESSION_SECRET)
 }
 
-/** Código determinístico de una mesa para una versión dada. */
-export function derivarCodigo(mesaId: string, version = 0): string {
-  const digest = createHmac('sha256', claveDeCodigos()).update(`mesa:${mesaId}:v${version}`).digest()
+/**
+ * Código determinístico de una mesa para una versión dada.
+ *
+ * La organización entra en la derivación, no como decoración: sin ella, la
+ * "mesa 1" de un restaurante y la "mesa 1" de otro producirían el mismo
+ * código, y el QR de un local abriría la mesa del vecino. Con varios
+ * restaurantes en la misma instalación eso deja de ser hipotético.
+ */
+export function derivarCodigo(mesaId: string, version = 0, organizacionId = ORGANIZACION_POR_DEFECTO): string {
+  const digest = createHmac('sha256', claveDeCodigos()).update(`mesa:${organizacionId}:${mesaId}:v${version}`).digest()
   let codigo = ''
   for (let indice = 0; indice < LARGO_CODIGO; indice += 1) {
     codigo += ALFABETO[digest[indice] % ALFABETO.length]
@@ -59,11 +67,11 @@ function iguales(a: string, b: string): boolean {
  * sí queda garantizado desde ahora es lo importante: el código de una mesa no
  * abre ninguna otra, y sin código no se entra.
  */
-export function resolverVersion(mesaId: string, codigo: string): number | null {
+export function resolverVersion(mesaId: string, codigo: string, organizacionId = ORGANIZACION_POR_DEFECTO): number | null {
   const buscado = normalizarCodigo(codigo)
   if (buscado.length !== LARGO_CODIGO) return null
   for (let version = 0; version <= MAX_VERSION_CODIGO; version += 1) {
-    if (iguales(buscado, normalizarCodigo(derivarCodigo(mesaId, version)))) return version
+    if (iguales(buscado, normalizarCodigo(derivarCodigo(mesaId, version, organizacionId)))) return version
   }
   return null
 }

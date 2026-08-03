@@ -16,7 +16,6 @@ import {
   CreditCard,
   DoorOpen,
   HandPlatter,
-  Landmark,
   MessageSquareText,
   Minus,
   Plus,
@@ -149,7 +148,9 @@ export default function MesaClient() {
 function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: boolean }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { sesion, esStaff, mesas, carrito, pedidos, platos, config, categoriasDisponibles, initStore, iniciarSesionMesa, iniciarSesionStaff, abandonarMesa, confirmarPedido, marcarComoPagado, registrarPagoParcial, saldoPendienteMesa, prepararPagoManual, setModoPostPago, agregarAlCarrito, quitarDelCarrito, actualizarCantidad, setPaneraAceptada, panera_aceptada, llamarMozo, propinaConfig, paneraPromptShown, fidelidadConfig, resenasEnviadas, ultimaCuentaPagada, enviarResena } = useStore()
+  /** El código en la URL lo pone el escaneo del QR, no una recarga cualquiera. */
+  const llegaDesdeElQr = Boolean(searchParams.get('c') || searchParams.get('codigo'))
+  const { sesion, esStaff, mesas, carrito, pedidos, platos, config, categoriasDisponibles, initStore, iniciarSesionMesa, iniciarSesionStaff, abandonarMesa, confirmarPedido, marcarComoPagado, registrarPagoParcial, saldoPendienteMesa, prepararPagoManual, setModoPostPago, reabrirMesa, agregarAlCarrito, quitarDelCarrito, actualizarCantidad, setPaneraAceptada, panera_aceptada, llamarMozo, propinaConfig, paneraPromptShown, fidelidadConfig, resenasEnviadas, ultimaCuentaPagada, enviarResena } = useStore()
 
   const mesa = mesas.find(m => m.id === mesaId)
   const [vista, setVista] = useState<VistaAll>('menu')
@@ -235,6 +236,11 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
       iniciarSesionStaff(mesaId, mesaNumero)
     } else if (!sesion || sesion.mesa_id !== mesaId || esStaff) {
       iniciarSesionMesa(mesaId, mesaNumero)
+    } else if (sesion.modo === 'post_pago' && llegaDesdeElQr) {
+      // Volvió a escanear el QR de su mesa después de pagar: quiere pedir de
+      // nuevo, no releer la carta. Sólo cuenta el escaneo real —el código
+      // viene en la URL—, así una recarga cualquiera no reabre la cuenta sola.
+      reabrirMesa()
     }
     const timer = (!yaHayPedido && !esModoStaff) ? setTimeout(() => { router.push('/vista') }, 15 * 60 * 1000) : null
     return () => { if (timer) clearTimeout(timer) }
@@ -510,6 +516,14 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
                 ))}
               </div>
               <footer><span>Última ronda {tiempoTranscurrido(pedidosEnCocina[pedidosEnCocina.length - 1]?.created_at)}</span>{!esModoStaff && <button type="button" onClick={() => setVista('pago')}>Revisar y pagar <ReceiptText size={15} /></button>}</footer>
+            </section>
+          )}
+          {esPostPago && !esModoStaff && (
+            <section className="mesa-seguir-pidiendo">
+              <p className="eyebrow">CUENTA PAGADA</p>
+              <h2>¿Se tientan con algo más?</h2>
+              <p>El postre y el café van en una cuenta nueva. Lo que ya pagaste queda cerrado.</p>
+              <button type="button" onClick={reabrirMesa}><Plus size={16} />Seguir pidiendo</button>
             </section>
           )}
           {!yaHayPedido && !esPostPago && !esModoStaff && (
@@ -796,7 +810,7 @@ interface PagoViewProps {
   acreditarPuntos: (monto: number) => void
 }
 
-function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, onVolver, sesionDispositivoId, mesaId, mesaNumero, config, marcarComoPagado, registrarPagoParcial, yaAportado, prepararPagoManual, setModoPostPago, irAResenas, onLlamarMozo, emailPago, setEmailPago, acreditarPuntos }: PagoViewProps) {
+function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, onVolver, sesionDispositivoId, mesaId, mesaNumero, marcarComoPagado, registrarPagoParcial, yaAportado, prepararPagoManual, setModoPostPago, irAResenas, onLlamarMozo, emailPago, setEmailPago, acreditarPuntos }: PagoViewProps) {
   const todosItems: ItemPedido[] = pedidos.flatMap(pedido => pedido.items)
   const misItems = todosItems.filter((i: ItemPedido) => i.dispositivo_id === sesionDispositivoId)
   const totalGeneral = todosItems.reduce((acc: number, i: ItemPedido) => acc + i.precio_unitario * i.cantidad, 0)
@@ -814,7 +828,6 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
   const [procesandoMP, setProcesandoMP] = useState(false)
   const [cargandoMP, setCargandoMP] = useState(false)
   const [mpEsDemo, setMpEsDemo] = useState(false)
-  const [mostrarTransferencia, setMostrarTransferencia] = useState(false)
   const [aporteRegistrado, setAporteRegistrado] = useState<number | null>(null)
 
   const baseCalculo = metodoPago === 'dividido'
@@ -891,7 +904,6 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
         setCargandoMP(false)
       }
     }
-    else if (metodo === 'transferencia') setMostrarTransferencia(true)
     else {
       prepararPagoManual(mesaId, propinaMonto, emailPago)
       onLlamarMozo(`Quiere pagar con ${metodo === 'tarjeta' ? 'tarjeta (POS)' : 'efectivo'} — Total: ${formatPrecio(montoFinal)}`)
@@ -919,12 +931,6 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
       setMostrarMPCheckout(false)
       cerrarFlujoDePago(resultado)
     }, 1800)
-  }
-
-  const confirmarTransferenciaHecha = () => {
-    const resultado = aplicarPago('transferencia')
-    setMostrarTransferencia(false)
-    cerrarFlujoDePago(resultado)
   }
 
   return (
@@ -1030,9 +1036,6 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
               <button type="button" className="mesa-payment-method mesa-payment-method--primary" onClick={() => validarYContinuar('mercadopago')} disabled={cargandoMP}>
                 <WalletCards size={19} /><span><b>{cargandoMP ? 'Conectando con Mercado Pago…' : 'Pagar con Mercado Pago'}</b><small>Pago digital inmediato</small></span>
               </button>
-              <button type="button" className="mesa-payment-method" onClick={() => validarYContinuar('transferencia')}>
-                <Landmark size={19} /><span><b>Transferencia bancaria</b><small>Copiá los datos de la sucursal</small></span>
-              </button>
               <button type="button" className="mesa-payment-method" onClick={() => validarYContinuar('tarjeta')}>
                 <CreditCard size={19} /><span><b>Tarjeta o efectivo</b><small>El mozo se acerca con el POS o la cuenta</small></span>
               </button>
@@ -1062,21 +1065,7 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
         )}
       </MenuActionDialog>
 
-      <MenuActionDialog
-        open={mostrarTransferencia}
-        onClose={() => setMostrarTransferencia(false)}
-        Icon={Landmark}
-        eyebrow="TRANSFERENCIA BANCARIA"
-        title={`Transferí ${formatPrecio(montoFinal)}`}
-        description="Usá los datos de la sucursal. El personal verificará la acreditación."
-        tone="gold"
-        footer={<button type="button" className="menu-dialog-button menu-dialog-button--primary" onClick={confirmarTransferenciaHecha}>Ya realicé la transferencia</button>}
-      >
-        <div className="menu-bank-details">
-          {[['Titular', config.cbu_titular || 'A configurar'], ['Alias', config.alias || 'A configurar'], ['CBU/CVU', config.cbu || config.cvu || 'A configurar']].map(([label, value]) => <div key={label}><span>{label}</span><b>{value}</b></div>)}
-        </div>
-      </MenuActionDialog>
-    </div>
+   </div>
   )
 }
 

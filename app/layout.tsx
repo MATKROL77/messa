@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   // El manifiesto lo genera `app/manifest.ts`; Next inyecta el enlace solo y
   // le aplica el prefijo de despliegue. Declararlo a mano acá apuntaba a un
   // archivo inexistente y devolvía 404 en cada carga.
+  icons: {
+    // `app/icon.svg` lo toma Next automáticamente para la pestaña. iOS, en
+    // cambio, ignora los SVG y necesita un PNG explícito: sin esta línea,
+    // "Agregar a la pantalla de inicio" guarda una captura de la página en
+    // lugar del logo.
+    apple: [{ url: '/icono-180.png', sizes: '180x180', type: 'image/png' }],
+  },
 }
 
 export const viewport: Viewport = {

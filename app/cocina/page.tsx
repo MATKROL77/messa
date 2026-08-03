@@ -1,18 +1,19 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChefHat, CircleCheckBig, Clock3, PackageCheck, ReceiptText, Truck, X } from 'lucide-react'
+import { AlertTriangle, Check, ChefHat, CircleCheckBig, Clock3, PackageCheck, Printer, ReceiptText, Truck, X } from 'lucide-react'
 import AdminOperationShell from '@/components/admin-operation-shell'
 import { useStore } from '@/lib/store'
 import type { Pedido } from '@/types'
 import { formatPrecio, tiempoEnMinutos, tiempoTranscurrido } from '@/lib/utils'
 import { AdminButton, AdminEmpty, AdminMetric, AdminPanel, AdminSegmented, AdminSheet, AdminStatus, AdminToast, AdminWorkspace } from '@/components/admin/admin-ui'
+import ComandaImpresa from '@/components/admin/comanda-impresa'
 import DishMedia from '@/components/menu/DishMedia'
 
 type Filtro = 'activos' | 'en_cocina' | 'listo' | 'entregado'
 
 export default function CocinaPage() {
-  const { pedidos, marcarPedidoListo, marcarPedidoEntregado, cancelarPedido, insumos, sucursalActualId, sucursales } = useStore()
+  const { pedidos, marcarPedidoListo, marcarPedidoEntregado, cancelarPedido, insumos, sucursalActualId, sucursales, config } = useStore()
   const [filtro, setFiltro] = useState<Filtro>('activos')
   const [seleccionado, setSeleccionado] = useState<Pedido | null>(null)
   const [toast, setToast] = useState('')
@@ -97,6 +98,7 @@ export default function CocinaPage() {
           footer={seleccionado && (
             <>
               <AdminButton tone="danger" icon={X} onClick={() => cancelar(seleccionado)}>Cancelar</AdminButton>
+              <AdminButton tone="neutral" icon={Printer} onClick={() => window.print()}>Imprimir</AdminButton>
               {seleccionado.estado === 'en_cocina' && <AdminButton tone="primary" icon={Check} onClick={() => listo(seleccionado)}>Marcar listo</AdminButton>}
               {seleccionado.estado === 'listo' && <AdminButton tone="primary" icon={Truck} onClick={() => entregar(seleccionado)}>Confirmar entrega</AdminButton>}
             </>
@@ -111,6 +113,7 @@ export default function CocinaPage() {
             })}</div>
             <footer><span>Total</span><strong>{formatPrecio(seleccionado.total)}</strong></footer>
           </div>}
+          {seleccionado && <ComandaImpresa pedido={seleccionado} restaurante={config.nombre} />}
         </AdminSheet>
       </AdminWorkspace>
     </AdminOperationShell>

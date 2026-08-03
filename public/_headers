@@ -1,0 +1,17 @@
+# Cabeceras de seguridad para Cloudflare Workers Assets.
+#
+# `headers()` de next.config.ts NO alcanza acá: Cloudflare sirve las páginas
+# ya generadas directamente desde su red de archivos, sin pasar por el
+# servidor de Next, así que esas cabeceras nunca se emiten. Este archivo es el
+# mecanismo de la plataforma y se aplica a todo lo que salga del dominio.
+#
+# Se mantienen las dos declaraciones a propósito: la de next.config cubre
+# `next start` en un servidor propio, y esta cubre el despliegue real.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.mercadopago.com; frame-src https://*.mercadopago.com https://*.mercadolibre.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

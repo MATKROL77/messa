@@ -351,3 +351,30 @@ export interface Sesion {
   dispositivo_id: string
   modo: 'curioso' | 'comensal' | 'post_pago'
 }
+
+/**
+ * Una línea de la bitácora: qué pasó, quién lo hizo y cuándo.
+ *
+ * Es lo primero que pregunta un dueño cuando falta plata en la caja o cuando
+ * un precio amaneció cambiado. Se escribe sola desde el store, no desde las
+ * pantallas, para que no dependa de que alguien se acuerde de registrarla.
+ *
+ * Nunca se edita ni se borra: sólo se agrega. Una bitácora que se puede
+ * retocar no sirve para lo único que tiene que servir.
+ */
+export interface EventoBitacora {
+  id: string
+  /** Qué ocurrió, en una frase corta y en pasado: "Anuló un pedido". */
+  accion: string
+  /** El objeto concreto: el nombre del plato, la mesa, el monto. */
+  detalle: string
+  /** Cuánto pesa: `aviso` para lo que conviene mirar, `alerta` para lo grave. */
+  nivel: 'normal' | 'aviso' | 'alerta'
+  /** Área a la que pertenece, para poder filtrar. */
+  area: 'carta' | 'salon' | 'pedidos' | 'caja' | 'inventario' | 'reservas' | 'equipo' | 'sistema'
+  actor_nombre: string
+  actor_email: string
+  actor_rol: string
+  sucursal_id: string
+  created_at: string
+}

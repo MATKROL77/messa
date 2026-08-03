@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import MessaWordmark from '@/components/messa-wordmark'
 import { ArrowRight, Clock3, MapPin, Sparkles, Utensils } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import DishMedia from '@/components/menu/DishMedia'
@@ -17,7 +18,7 @@ export default function Home() {
     {/* Dos puertas distintas y bien separadas: la de los comensales (su cuenta
         y sus puntos) y la del equipo (el backoffice). */}
     <nav className="messa-home__nav">
-      <Link href="/" className="messa-wordmark">MESSA</Link>
+      <Link href="/" aria-label="MESSA, ir al inicio"><MessaWordmark /></Link>
       <span className="messa-home__links">
         <Link href="/cuenta" className="messa-home__account-link"><Sparkles size={15} aria-hidden="true" />Mi cuenta</Link>
         <Link href="/login" className="messa-home__staff-link">Acceso al equipo</Link>

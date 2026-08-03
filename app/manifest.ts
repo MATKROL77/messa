@@ -20,13 +20,17 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: withBasePath('/'),
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#F5F2EA',
+    background_color: '#1B1A16',
     theme_color: '#C69A3F',
     lang: 'es-AR',
     categories: ['food', 'business'],
     icons: [
-      { src: withBasePath('/favicon.ico'), sizes: 'any', type: 'image/x-icon' },
-      { src: withBasePath('/icon.svg'), sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      // 'maskable' deja que Android recorte el ícono a la forma del sistema
+      // sin comerse la hoja dorada; sin él lo mete dentro de otro círculo
+      // blanco y queda un ícono adentro de un ícono.
+      { src: withBasePath('/icono-192.png'), sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: withBasePath('/icono-512.png'), sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: withBasePath('/icono-512.png'), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 }

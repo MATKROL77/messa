@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verificarToken } from '@/lib/session'
+import { verificarToken, ORGANIZACION_POR_DEFECTO } from '@/lib/session'
 import { resolverVersion, hayClaveDeCodigos } from '@/lib/mesa-codigo-server'
 import { db, filtro, baseDatosLista, ErrorSupabase } from '@/lib/supabase-admin'
 
@@ -21,7 +21,7 @@ import { db, filtro, baseDatosLista, ErrorSupabase } from '@/lib/supabase-admin'
  * a Postgres con una función que compare por campo.
  */
 
-type TipoOperativo = 'mesa' | 'pedido' | 'llamado' | 'elemento'
+type TipoOperativo = 'mesa' | 'pedido' | 'llamado' | 'elemento' | 'bitacora'
 /**
  * Los datos que edita el dueño desde un solo lugar viajan agrupados por
  * dominio, no entidad por entidad: la carta entera en un paquete, el stock en
@@ -43,6 +43,12 @@ interface Entidad {
 
 interface Solicitud {
   sucursalId?: string
+  /**
+   * Sólo la usa el comensal, que no tiene sesión. Del equipo NO se lee: la
+   * suya sale del token firmado, porque un dato que manda el navegador no
+   * puede decidir a qué restaurante se entra.
+   */
+  organizacionId?: string
   /** Marca de tiempo de la última sincronización; se devuelve lo posterior. */
   desde?: string
   entidades?: Entidad[]
@@ -51,7 +57,7 @@ interface Solicitud {
   codigo?: string
 }
 
-const TIPOS_OPERATIVOS: TipoOperativo[] = ['mesa', 'pedido', 'llamado', 'elemento']
+const TIPOS_OPERATIVOS: TipoOperativo[] = ['mesa', 'pedido', 'llamado', 'elemento', 'bitacora']
 const TIPOS_PAQUETE: TipoPaquete[] = ['carta', 'stock', 'agenda', 'finanzas', 'ajustes']
 const TIPOS: TipoEntidad[] = [...TIPOS_OPERATIVOS, ...TIPOS_PAQUETE]
 const MAX_ENTIDADES = 400
@@ -75,14 +81,21 @@ export async function POST(req: NextRequest) {
   // código que sólo se obtiene escaneando el QR físico de su mesa.
   const sesionStaff = verificarToken(req.cookies.get('mf_session')?.value)
   let mesaDelComensal: string | null = null
+  // El restaurante del equipo sale de su token; el del comensal, de su código.
+  let organizacionId = sesionStaff?.organizacionId || ORGANIZACION_POR_DEFECTO
   if (!sesionStaff) {
     if (!hayClaveDeCodigos()) return NextResponse.json({ ok: false, error: 'sin-clave' }, { status: 503 })
     const mesaId = (body.mesaId || '').trim()
     const codigo = (body.codigo || '').trim()
-    if (!mesaId || !codigo || resolverVersion(mesaId, codigo) === null) {
+    const organizacionPedida = (body.organizacionId || '').trim() || ORGANIZACION_POR_DEFECTO
+    // El código se deriva CON la organización, así que decir "soy de este
+    // restaurante" no alcanza: hay que traer un código que sólo existe si
+    // realmente lo es. Un QR del local de al lado no valida acá.
+    if (!mesaId || !codigo || resolverVersion(mesaId, codigo, organizacionPedida) === null) {
       return NextResponse.json({ ok: false, error: 'Sin acceso a esta mesa.' }, { status: 403 })
     }
     mesaDelComensal = mesaId
+    organizacionId = organizacionPedida
   }
 
   const entrantes = (body.entidades || [])
@@ -95,6 +108,9 @@ export async function POST(req: NextRequest) {
       if (!mesaDelComensal) return true
       // El plano y la configuración los toca el panel; un teléfono nunca.
       if (e.tipo === 'elemento') return false
+      // La bitácora la escribe el panel. Si un teléfono pudiera agregar
+      // líneas, el registro dejaría de servir como prueba de nada.
+      if (e.tipo === 'bitacora') return false
       if (TIPOS_PAQUETE.includes(e.tipo as TipoPaquete)) return false
       if (e.tipo === 'mesa') return e.id === mesaDelComensal
       const payload = e.payload as { mesa_id?: string }
@@ -108,6 +124,7 @@ export async function POST(req: NextRequest) {
         entrantes.map(e => ({
           id: e.id,
           tipo: e.tipo,
+          organizacion_id: organizacionId,
           sucursal_id: sucursalId,
           payload: e.payload,
           updated_at: e.updated_at || new Date().toISOString(),
@@ -122,7 +139,7 @@ export async function POST(req: NextRequest) {
     const desde = body.desde || '1970-01-01T00:00:00Z'
     const cambios = await db.seleccionar<Entidad>(
       'estado_operativo',
-      `?sucursal_id=eq.${filtro(sucursalId)}&updated_at=gt.${filtro(desde)}&select=id,tipo,payload,updated_at&order=updated_at.asc&limit=1000`,
+      `?organizacion_id=eq.${filtro(organizacionId)}&sucursal_id=eq.${filtro(sucursalId)}&updated_at=gt.${filtro(desde)}&select=id,tipo,payload,updated_at&order=updated_at.asc&limit=1000`,
     )
 
     return NextResponse.json({ ok: true, cambios, ahora: new Date().toISOString() })

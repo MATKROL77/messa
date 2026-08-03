@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { obtenerCuentasFijas } from '@/lib/auth-config'
-import { crearToken } from '@/lib/session'
+import { crearToken, ORGANIZACION_POR_DEFECTO } from '@/lib/session'
 import { db, filtro, baseDatosLista } from '@/lib/supabase-admin'
 import type { RolUsuario } from '@/types'
 
@@ -11,6 +11,7 @@ interface UsuarioStaffDB {
   nombre: string
   rol: RolUsuario
   activo: boolean
+  organizacion_id: string | null
 }
 
 /**
@@ -99,6 +100,10 @@ export async function POST(req: NextRequest) {
     email: cuenta.email,
     nombre: cuenta.nombre,
     rol: cuenta.rol,
+    // Las cuentas fijas del entorno son las del dueño de MESSA; las del equipo
+    // traen la suya de la base. Si una fila vieja todavía no la tiene, cae en
+    // la organización original en vez de quedarse sin acceso a nada.
+    organizacionId: enBase?.organizacion_id || process.env.ORGANIZACION_ID || ORGANIZACION_POR_DEFECTO,
     exp: ahora + 1000 * 60 * 60 * 12, // 12 horas
   })
 

@@ -15,8 +15,20 @@ export interface SesionPayload {
   email: string
   nombre: string
   rol: 'creator' | 'admin' | 'gerente' | 'editor' | 'staff'
+  /**
+   * El restaurante al que pertenece quien entra.
+   *
+   * Va DENTRO del token firmado y no en el cuerpo de cada petición: si el
+   * navegador pudiera mandarla, cambiar un número abriría los datos del
+   * restaurante de al lado. Acá el servidor la firma al iniciar sesión y ya
+   * no se puede tocar sin romper la firma.
+   */
+  organizacionId: string
   exp: number
 }
+
+/** La organización del primer cliente, para las sesiones anteriores al cambio. */
+export const ORGANIZACION_POR_DEFECTO = 'org-messa'
 
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const mesas = (body.mesas || []).filter(mesa => typeof mesa.id === 'string' && mesa.id).slice(0, 500)
   const codigos: Record<string, string> = {}
   for (const mesa of mesas) {
-    codigos[mesa.id as string] = derivarCodigo(mesa.id as string, Math.max(0, Math.floor(mesa.version || 0)))
+    codigos[mesa.id as string] = derivarCodigo(mesa.id as string, Math.max(0, Math.floor(mesa.version || 0)), sesion.organizacionId)
   }
 
   return NextResponse.json({ ok: true, codigos })

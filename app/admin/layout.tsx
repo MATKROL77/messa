@@ -3,17 +3,19 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LockKeyhole, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
+import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LockKeyhole, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, ScrollText, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
 import { useStore, type PermisoAdmin } from '@/lib/store'
 import type { RolUsuario } from '@/types'
 import MessaWordmark from '@/components/messa-wordmark'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
+import AvisoConexion from '@/components/admin/aviso-conexion'
 import { limpiarIconoLegacy } from '@/lib/utils'
 import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
 import { withBasePath } from '@/lib/base-path'
 import { useSyncOperativo } from '@/lib/use-sync-operativo'
 
 const PERMISO_RUTA: { prefix: string; permiso: PermisoAdmin }[] = [
+  { prefix: '/admin/bitacora', permiso: 'bitacora' },
   { prefix: '/admin/tema', permiso: 'identidad' },
   { prefix: '/admin/fidelidad', permiso: 'fidelidad' },
   { prefix: '/admin/usuarios', permiso: 'usuarios' },
@@ -58,6 +60,7 @@ const GESTION: DockItem[] = [
   { href: '/admin/sucursales', label: 'Sucursales', Icon: Building2 },
   { href: '/admin/usuarios', label: 'Usuarios', Icon: UsersRound },
   { href: '/admin/tema', label: 'Identidad', Icon: Palette },
+  { href: '/admin/bitacora', label: 'Bitácora', Icon: ScrollText },
 ]
 
 function isCurrentPath(pathname: string, item: DockItem) {
@@ -175,6 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="admin-shell">
       <div className="admin-ambient" aria-hidden="true" />
+      <AvisoConexion />
       {MODO_VISTA_PREVIA && (
         <p className="admin-preview-banner" role="status">
           Vista previa estática · datos de demostración, sin servidor. El login real, los pagos y los códigos de mesa firmados funcionan en el despliegue completo.

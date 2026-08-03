@@ -5385,3 +5385,281 @@ html[data-admin-theme="light"] .messa-reorder-handle { border-color: #fffdf9; }
 @media (prefers-reduced-motion: reduce) {
   .messa-admin-product-grid.is-reordenando .messa-admin-product { animation: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   BITÁCORA Y RESPALDO
+   Una lista larga que se lee de arriba abajo. La jerarquía la da el
+   peso del texto, no las cajas: cada línea es una fila con su marca a
+   la izquierda y la hora a la derecha, siempre en la misma columna,
+   para poder barrer la columna de horas con la mirada.
+   ══════════════════════════════════════════════════════════════ */
+
+.messa-bitacora { display: flex; flex-direction: column; gap: 2px; list-style: none; margin: 0; padding: 0; }
+
+.messa-bitacora__fila {
+  align-items: start;
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 28px 1fr auto;
+  padding: 13px 14px;
+  transition: background var(--ios-dur, .32s) var(--ios-ease, cubic-bezier(.32,.72,0,1));
+}
+.messa-bitacora__fila:hover { background: color-mix(in srgb, var(--admin-surface) 55%, transparent); }
+/* Una línea sí y una no, apenas insinuada: ayuda a seguir el renglón
+   sin dibujar una grilla que ensucie la pantalla. */
+.messa-bitacora__fila:nth-child(2n) { background: color-mix(in srgb, var(--admin-surface) 32%, transparent); }
+
+.messa-bitacora__marca {
+  align-items: center;
+  background: color-mix(in srgb, var(--admin-text-muted) 14%, transparent);
+  border-radius: 50%;
+  color: var(--admin-text-muted);
+  display: flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+.messa-bitacora__marca svg { color: currentColor; }
+.messa-bitacora__fila--aviso .messa-bitacora__marca { background: color-mix(in srgb, #e0a33c 20%, transparent); color: #e0a33c; }
+.messa-bitacora__fila--alerta .messa-bitacora__marca { background: color-mix(in srgb, #d9737a 22%, transparent); color: #d9737a; }
+
+.messa-bitacora__cuerpo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.messa-bitacora__accion {
+  align-items: center;
+  color: var(--admin-text);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  font-weight: 560;
+  gap: 8px;
+  letter-spacing: -.01em;
+  margin: 0;
+}
+.messa-bitacora__detalle { color: var(--admin-text-soft); font-size: 12.5px; line-height: 1.45; margin: 0; }
+.messa-bitacora__firma {
+  color: var(--admin-text-muted);
+  display: flex;
+  font-size: 11px;
+  gap: 6px;
+  margin: 0;
+  text-transform: capitalize;
+}
+.messa-bitacora__hora {
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  padding-top: 3px;
+  white-space: nowrap;
+}
+
+/* ── Respaldo: dos decisiones, una al lado de la otra ── */
+.messa-respaldo { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.messa-respaldo__card {
+  background: color-mix(in srgb, var(--admin-surface) 60%, transparent);
+  border: 1px solid var(--admin-border);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px;
+}
+.messa-respaldo__card h2 { color: var(--admin-text); font-size: 16px; letter-spacing: -.02em; margin: 0; }
+.messa-respaldo__card p { color: var(--admin-text-soft); font-size: 12.5px; line-height: 1.6; margin: 0; }
+.messa-respaldo__card .messa-button { align-self: flex-start; margin-top: 6px; }
+.messa-respaldo__icon {
+  align-items: center;
+  background: color-mix(in srgb, var(--messa-accent) 18%, transparent);
+  border-radius: 14px;
+  color: var(--messa-accent);
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+.messa-respaldo__icon svg { color: currentColor; }
+.messa-respaldo__icon--aviso { background: color-mix(in srgb, #e0a33c 18%, transparent); color: #e0a33c; }
+
+.messa-respaldo__resumen { display: flex; flex-direction: column; gap: 12px; }
+.messa-respaldo__resumen p { color: var(--admin-text-soft); font-size: 13px; line-height: 1.6; margin: 0; }
+.messa-respaldo__resumen ul {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.messa-respaldo__resumen li {
+  background: color-mix(in srgb, var(--admin-surface) 60%, transparent);
+  border-radius: 14px;
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  padding: 12px 14px;
+}
+.messa-respaldo__resumen li strong { color: var(--admin-text); display: block; font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+.messa-respaldo__fecha { color: var(--admin-text-muted) !important; font-size: 11.5px !important; }
+.messa-respaldo__aviso {
+  background: color-mix(in srgb, #d9737a 12%, transparent);
+  border-radius: 14px;
+  color: var(--admin-text) !important;
+  font-size: 12px !important;
+  padding: 12px 14px;
+}
+
+@media (max-width: 760px) {
+  .messa-respaldo { grid-template-columns: 1fr; }
+  .messa-bitacora__fila { gap: 10px; grid-template-columns: 24px 1fr; padding: 12px 10px; }
+  .messa-bitacora__marca { height: 24px; width: 24px; }
+  /* En el teléfono la hora baja a la línea de la firma en vez de robar ancho. */
+  .messa-bitacora__hora { grid-column: 2; padding-top: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMANDA EN PAPEL
+   En pantalla no existe. Al imprimir es lo ÚNICO que queda en la hoja.
+   ══════════════════════════════════════════════════════════════ */
+
+.comanda-impresa { display: none; }
+
+@media print {
+  /* Se apaga toda la aplicación y se enciende sólo la comanda. Sin esto la
+     hoja saldría con el menú lateral, los degradados y las sombras: papel
+     térmico gastado en tinta que nadie mira. */
+  body > * { display: none !important; }
+  body { background: #fff !important; margin: 0; padding: 0; }
+
+  .comanda-impresa {
+    color: #000;
+    display: block !important;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    left: 0;
+    position: absolute;
+    top: 0;
+    /* 80 mm es el rollo estándar de gastronomía; 72 mm es el área imprimible. */
+    width: 72mm;
+  }
+
+  .comanda-impresa p { margin: 0; }
+  .comanda-impresa hr { border: 0; border-top: 1px dashed #000; margin: 3mm 0; }
+
+  .comanda-impresa__local { font-size: 10pt; letter-spacing: .06em; text-align: center; text-transform: uppercase; }
+  /* El número de mesa es lo que se busca de un vistazo entre diez tickets
+     colgados: va enorme y solo. */
+  .comanda-impresa__mesa { font-size: 22pt; font-weight: 700; letter-spacing: .04em; margin-top: 1mm !important; text-align: center; }
+  .comanda-impresa__meta { font-size: 8.5pt; margin-top: 1mm !important; text-align: center; }
+
+  .comanda-impresa__items { list-style: none; margin: 0; padding: 0; }
+  .comanda-impresa__items > li { margin-bottom: 3.5mm; }
+  .comanda-impresa__plato { display: flex; font-size: 12pt; font-weight: 700; gap: 2.5mm; line-height: 1.25; }
+  .comanda-impresa__plato span { min-width: 8mm; }
+  .comanda-impresa__nota { font-size: 9.5pt; line-height: 1.35; padding-left: 10.5mm; }
+  /* Lo que hay que sacar y las notas del comensal van en negativo: es el
+     renglón que, si se pasa por alto, devuelve el plato a la cocina. */
+  .comanda-impresa__quitar {
+    background: #000;
+    color: #fff;
+    display: inline-block;
+    font-size: 9.5pt;
+    font-weight: 700;
+    margin-left: 10.5mm !important;
+    margin-top: .8mm !important;
+    padding: .6mm 1.6mm;
+  }
+  .comanda-impresa__pie { font-size: 9pt; text-align: center; }
+
+  @page { margin: 4mm; size: 80mm auto; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SIN CONEXIÓN
+   Flota arriba de todo, centrado, sin tapar nada de la operación.
+   Entra deslizándose desde arriba: aparecer de golpe se lee como un
+   error de la app, deslizarse se lee como un aviso.
+   ══════════════════════════════════════════════════════════════ */
+
+.messa-sin-conexion {
+  align-items: center;
+  animation: messa-baja-aviso .42s cubic-bezier(.32, .72, 0, 1);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: color-mix(in srgb, #4a3a1c 88%, transparent);
+  border: 1px solid color-mix(in srgb, #e0a33c 40%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .34);
+  display: flex;
+  gap: 11px;
+  left: 50%;
+  max-width: min(440px, calc(100vw - 24px));
+  padding: 11px 15px;
+  position: fixed;
+  /* Debajo de las hojas modales: un aviso nunca puede tapar una confirmación. */
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  transform: translateX(-50%);
+  z-index: 60;
+}
+@keyframes messa-baja-aviso {
+  from { opacity: 0; transform: translate(-50%, -14px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.messa-sin-conexion__icono {
+  align-items: center;
+  background: color-mix(in srgb, #e0a33c 24%, transparent);
+  border-radius: 50%;
+  color: #f0c477;
+  display: flex;
+  flex: 0 0 auto;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+.messa-sin-conexion__icono svg { color: currentColor; }
+
+.messa-sin-conexion p { color: #f6ecd8; font-size: 12.5px; line-height: 1.45; margin: 0; }
+.messa-sin-conexion strong { font-weight: 620; }
+.messa-sin-conexion small { color: #cdbb9a; display: block; font-size: 11px; margin-top: 2px; }
+
+html[data-admin-theme="light"] .messa-sin-conexion {
+  background: color-mix(in srgb, #fdf6e6 94%, transparent);
+  border-color: color-mix(in srgb, #b9821f 34%, transparent);
+  box-shadow: 0 18px 40px rgba(68, 57, 39, .16);
+}
+html[data-admin-theme="light"] .messa-sin-conexion p { color: #35301f; }
+html[data-admin-theme="light"] .messa-sin-conexion small { color: #726party; }
+html[data-admin-theme="light"] .messa-sin-conexion small { color: #726a56; }
+html[data-admin-theme="light"] .messa-sin-conexion__icono { background: color-mix(in srgb, #b9821f 16%, transparent); color: #93661a; }
+
+@media (prefers-reduced-motion: reduce) {
+  .messa-sin-conexion { animation: none; }
+}
+
+/* ── Seguir pidiendo después de pagar ──
+   Pagar no es irse: la sobremesa termina en café y postre la mitad de las
+   veces. Este bloque aparece donde antes sólo decía "cuenta pagada". */
+.mesa-seguir-pidiendo {
+  background: linear-gradient(150deg, rgba(212, 175, 55, .12), rgba(212, 175, 55, .04));
+  border: 1px solid rgba(212, 175, 55, .24);
+  border-radius: 22px;
+  margin: 18px 0;
+  padding: 20px;
+  text-align: center;
+}
+.mesa-seguir-pidiendo .eyebrow { color: var(--gold); font-size: 10px; letter-spacing: .16em; margin: 0 0 8px; }
+.mesa-seguir-pidiendo h2 { color: #fff; font-size: 19px; letter-spacing: -.02em; margin: 0 0 6px; }
+.mesa-seguir-pidiendo p { color: #a5a094; font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+.mesa-seguir-pidiendo button {
+  align-items: center;
+  background: var(--gold);
+  border: 0;
+  border-radius: 999px;
+  color: #171612;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 8px;
+  padding: 13px 26px;
+  transition: transform .3s cubic-bezier(.32, .72, 0, 1);
+}
+.mesa-seguir-pidiendo button:active { transform: scale(.96); }
+.mesa-seguir-pidiendo button svg { color: currentColor; }

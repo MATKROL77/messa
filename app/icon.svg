@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MESSA">
+  <!--
+    La marca reducida a su símbolo: la S tachada por la hoja dorada.
+
+    Va sobre un cuadrado oscuro, no sobre blanco como en el manual de marca,
+    por una razón práctica: a 16 px en la pestaña del navegador, y como ícono
+    en la pantalla de inicio de un teléfono, una S gris sobre transparente
+    desaparece contra los fondos claros y contra los oscuros. El bloque le da
+    silueta propia y la hoja dorada sigue siendo lo que se reconoce de lejos.
+  -->
+  <defs>
+    <linearGradient id="hoja" x1="18" y1="112" x2="112" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B0812B"/>
+      <stop offset=".48" stop-color="#F2D695"/>
+      <stop offset="1" stop-color="#B0812B"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="29" fill="#1B1A16"/>
+
+  <!-- La S, trazada y no tipografiada: así se ve igual en cualquier sistema. -->
+  <path
+    d="M87 45c0-11-11-18-23-18-13 0-23 7-23 18 0 12 12 16 24 19 13 3 26 8 26 21 0 13-12 20-27 20-14 0-25-7-27-18"
+    fill="none" stroke="#EFEAE0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- La hoja: dos curvas que se cruzan y terminan en punta a ambos extremos.
+       Una bordea por abajo y la otra por arriba, así el filo nace y muere en
+       un punto y engorda en el medio, justo donde cruza la S. -->
+  <path d="M18 114C36 104 60 78 112 16 86 36 50 70 18 114Z" fill="url(#hoja)"/>
+</svg>

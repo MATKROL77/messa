@@ -20,6 +20,7 @@ import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
 export function useCartaPublica() {
   const aplicarPaqueteRemoto = useStore(state => state.aplicarPaqueteRemoto)
   const sucursalActualId = useStore(state => state.sucursalActualId)
+  const organizacionActualId = useStore(state => state.organizacionActualId)
 
   useEffect(() => {
     if (MODO_VISTA_PREVIA || !sucursalActualId) return
@@ -27,7 +28,7 @@ export function useCartaPublica() {
 
     void (async () => {
       try {
-        const respuesta = await fetch(withBasePath(`/api/carta?sucursal=${encodeURIComponent(sucursalActualId)}`), { cache: 'no-store' })
+        const respuesta = await fetch(withBasePath(`/api/carta?sucursal=${encodeURIComponent(sucursalActualId)}&org=${encodeURIComponent(organizacionActualId)}`), { cache: 'no-store' })
         if (!respuesta.ok || !vigente) return
         const datos = await respuesta.json() as { ok?: boolean; carta?: Record<string, unknown> | null }
         if (!vigente || !datos.ok || !datos.carta) return
@@ -38,5 +39,5 @@ export function useCartaPublica() {
     })()
 
     return () => { vigente = false }
-  }, [aplicarPaqueteRemoto, sucursalActualId])
+  }, [aplicarPaqueteRemoto, organizacionActualId, sucursalActualId])
 }

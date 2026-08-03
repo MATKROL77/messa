@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ORGANIZACION_POR_DEFECTO } from '@/lib/session'
 import { db, filtro, baseDatosLista } from '@/lib/supabase-admin'
 
 /**
@@ -16,13 +17,18 @@ import { db, filtro, baseDatosLista } from '@/lib/supabase-admin'
 export async function GET(req: NextRequest) {
   if (!baseDatosLista) return NextResponse.json({ ok: false, error: 'sin-base' }, { status: 503 })
 
-  const sucursalId = (new URL(req.url).searchParams.get('sucursal') || '').trim()
+  const parametros = new URL(req.url).searchParams
+  const sucursalId = (parametros.get('sucursal') || '').trim()
   if (!sucursalId) return NextResponse.json({ ok: false, error: 'Falta la sucursal' }, { status: 400 })
+  // La carta es pública —cualquiera puede leerla— pero cada restaurante tiene
+  // la suya: sin filtrar por organización, dos locales con una sucursal
+  // llamada igual se mostrarían la carta cruzada.
+  const organizacionId = (parametros.get('org') || '').trim() || ORGANIZACION_POR_DEFECTO
 
   try {
     const fila = await db.primera<{ payload: unknown; updated_at: string }>(
       'estado_operativo',
-      `?id=eq.${filtro(`carta:${sucursalId}`)}&tipo=eq.carta&select=payload,updated_at`,
+      `?id=eq.${filtro(`carta:${sucursalId}`)}&organizacion_id=eq.${filtro(organizacionId)}&tipo=eq.carta&select=payload,updated_at`,
     )
     if (!fila) return NextResponse.json({ ok: true, carta: null })
     return NextResponse.json({ ok: true, carta: fila.payload, updated_at: fila.updated_at })

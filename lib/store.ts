@@ -1,9 +1,10 @@
 'use client'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRestaurante, CierreDiario, RolUsuario, PropinaConfig, Tema, LlamadoMozo, MetodoPago, Sucursal, Categoria, ConfigDelivery, Gasto, FidelidadConfig, RecompensaFidelidad, ReviewPlato, ElementoPlano, TipoElementoPlano } from '@/types'
+import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRestaurante, CierreDiario, RolUsuario, PropinaConfig, Tema, LlamadoMozo, MetodoPago, Sucursal, Categoria, ConfigDelivery, Gasto, FidelidadConfig, RecompensaFidelidad, ReviewPlato, ElementoPlano, TipoElementoPlano, EventoBitacora } from '@/types'
 import { getMesasMock, insumosIniciales, platosIniciales, configInicial, tagsIniciales, propinaConfigInicial, temaInicial, sucursalesIniciales, categoriasIniciales, deliveryIntegracionesIniciales, fidelidadConfigInicial, recompensasFidelidadIniciales, MESSA_DORADO, VERDE_HEREDADO } from '@/lib/data'
-import { generarId, obtenerDispositivoId } from '@/lib/utils'
+import { generarId, obtenerDispositivoId, formatPrecio } from '@/lib/utils'
+import type { Respaldo } from '@/lib/respaldo'
 import { normalizarTagRfid } from '@/lib/mesa-codigo'
 import { withBasePath } from '@/lib/base-path'
 
@@ -24,11 +25,11 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export type PermisoAdmin = 'resumen' | 'carta' | 'salon' | 'pedidos' | 'inventario' | 'reservas' | 'finanzas' | 'cobros' | 'caja' | 'delivery' | 'fidelidad' | 'sucursales' | 'usuarios' | 'identidad'
+export type PermisoAdmin = 'resumen' | 'carta' | 'salon' | 'pedidos' | 'inventario' | 'reservas' | 'finanzas' | 'cobros' | 'caja' | 'delivery' | 'fidelidad' | 'sucursales' | 'usuarios' | 'identidad' | 'bitacora'
 
 const PERMISOS_ADMIN_DEFAULT: Record<RolUsuario, PermisoAdmin[]> = {
-  creator: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad'],
-  admin: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad'],
+  creator: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad', 'bitacora'],
+  admin: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad', 'sucursales', 'usuarios', 'identidad', 'bitacora'],
   // El gerente maneja el turno completo —incluida la caja y la fidelidad— pero
   // no toca la identidad de la marca, las sucursales ni el equipo.
   gerente: ['resumen', 'carta', 'salon', 'pedidos', 'inventario', 'reservas', 'finanzas', 'cobros', 'caja', 'delivery', 'fidelidad'],
@@ -37,6 +38,13 @@ const PERMISOS_ADMIN_DEFAULT: Record<RolUsuario, PermisoAdmin[]> = {
 }
 
 const CATEGORIAS_MESSA_NUEVAS = new Set(['sushi', 'cafes'])
+
+/**
+ * Cuántas líneas de bitácora se guardan en el dispositivo. La base conserva
+ * todas; esto es sólo para que el almacenamiento del navegador no crezca sin
+ * freno en un local que trabaja todos los días.
+ */
+const TOPE_BITACORA = 400
 
 /**
  * Mantiene únicamente el catálogo editorial aprobado de MESSA. Conserva los
@@ -196,6 +204,12 @@ interface AppStore {
   llamadosMozo: LlamadoMozo[]
   sucursales: Sucursal[]
   sucursalActualId: string
+  /**
+   * El restaurante (no la sucursal). Para el equipo, el servidor la toma de
+   * su sesión firmada e ignora lo que mande el navegador; acá se guarda para
+   * que el comensal —que no tiene sesión— pueda decir de qué local es su QR.
+   */
+  organizacionActualId: string
   deliveryIntegraciones: ConfigDelivery[]
   gastos: Gasto[]
   costoInsumosConsumidoHistorico: number
@@ -214,6 +228,8 @@ interface AppStore {
   iniciarModoVista: () => void
   abandonarMesa: () => void
   setModoPostPago: () => void
+  /** Vuelve al modo comensal después de pagar, para seguir pidiendo. */
+  reabrirMesa: () => void
   setPaneraAceptada: (opcionId: string | null) => void
 
   agregarAlCarrito: (plato: Plato, ingRemovidos: string[], notas: string, cantidad?: number, modsElegidos?: string[]) => void
@@ -275,6 +291,15 @@ interface AppStore {
   elementosPlano: ElementoPlano[]
   crearElementoPlano: (tipo: TipoElementoPlano, texto?: string) => void
   asignarMesaAReserva: (reservaId: string, mesaId: string | null) => void
+  /**
+   * Bitácora: quién hizo qué. Sólo se agrega, nunca se edita ni se borra.
+   * Se guardan las últimas `TOPE_BITACORA` en el dispositivo; la base
+   * conserva todas.
+   */
+  bitacora: EventoBitacora[]
+  registrarEnBitacora: (evento: Pick<EventoBitacora, 'accion' | 'detalle' | 'area'> & { nivel?: EventoBitacora['nivel'] }) => void
+  /** Vuelve a una copia de seguridad. No toca el turno en curso. */
+  restaurarRespaldo: (respaldo: Respaldo) => void
   /** Funde en el estado local lo que cambió en otros dispositivos. */
   aplicarEstadoRemoto: (cambios: { id: string; tipo: string; payload: unknown; updated_at: string }[]) => void
   /** Reemplaza un dominio completo (carta, stock, agenda…) con la versión remota. */
@@ -359,6 +384,7 @@ export const useStore = create<AppStore>()(
       llamadosMozo: [],
       sucursales: sucursalesIniciales,
       sucursalActualId: 'suc1',
+      organizacionActualId: 'org-messa',
       deliveryIntegraciones: deliveryIntegracionesIniciales,
       gastos: [],
       costoInsumosConsumidoHistorico: 0,
@@ -370,7 +396,7 @@ export const useStore = create<AppStore>()(
       pagosParciales: {},
       elementosPlano: [],
       permisosAdmin: PERMISOS_ADMIN_DEFAULT,
-      permisosVersion: 3,
+      permisosVersion: 4,
 
         initStore: () => {
           set(state => ({
@@ -387,6 +413,8 @@ export const useStore = create<AppStore>()(
             permisosAdmin: {
               ...state.permisosAdmin,
               ...(state.permisosVersion < 2 ? { admin: PERMISOS_ADMIN_DEFAULT.admin } : {}),
+              // v4 trae la bitácora: se la damos a quien ya tenía control total.
+              ...(state.permisosVersion < 4 ? { creator: PERMISOS_ADMIN_DEFAULT.creator, admin: PERMISOS_ADMIN_DEFAULT.admin } : {}),
               gerente: state.permisosAdmin?.gerente || PERMISOS_ADMIN_DEFAULT.gerente,
             },
             permisosVersion: 3,
@@ -429,6 +457,21 @@ export const useStore = create<AppStore>()(
       },
 
       setModoPostPago: () => set(s => ({ sesion: s.sesion ? { ...s.sesion, modo: 'post_pago' } : null, carrito: [] })),
+
+      /**
+       * Vuelve a abrir la mesa después de pagar.
+       *
+       * Pagar no es irse. Una sobremesa termina en café y postre la mitad de
+       * las veces, y hasta ahora la cuenta pagada dejaba la carta en modo
+       * lectura: el comensal tenía que llamar al mozo para pedir algo más,
+       * que es exactamente lo que esta app venía a evitar. Lo que sigue es una
+       * cuenta nueva; la anterior ya está cerrada y no se toca.
+       */
+      reabrirMesa: () => set(s => (
+        s.sesion && s.sesion.modo === 'post_pago'
+          ? { sesion: { ...s.sesion, modo: 'comensal' as const }, carrito: [] }
+          : {}
+      )),
       setPaneraAceptada: (opcionId) => set({ panera_aceptada: opcionId }),
 
       agregarAlCarrito: (plato, ingRemovidos, notas, cantidad = 1, modsElegidos = []) => {
@@ -632,6 +675,14 @@ export const useStore = create<AppStore>()(
           pedidos: s.pedidos.map(p => p.id === pedidoId ? { ...p, estado: 'cancelado' as const, updated_at: new Date().toISOString() } : p),
           mesas: s.mesas.map(m => m.id === pedido?.mesa_id ? { ...m, estado: 'libre' as MesaEstado, dispositivos: [], updated_at: new Date().toISOString() } : m)
         }))
+        // Anular un pedido saca plata de la caja del día: queda registrado con
+        // el monto, porque es la maniobra clásica para tapar un faltante.
+        get().registrarEnBitacora({
+          area: 'pedidos',
+          nivel: 'alerta',
+          accion: 'Anuló un pedido',
+          detalle: pedido ? `Mesa ${pedido.mesa_numero} · ${formatPrecio(pedido.total)}` : 'Pedido no encontrado',
+        })
       },
 
       transferirMesa: (origenId, destinoId) => {
@@ -798,12 +849,30 @@ export const useStore = create<AppStore>()(
         set({ platos: updatedPlatos })
       },
 
-      actualizarPlato: (plato) => set(s => ({ platos: s.platos.map(p => p.id === plato.id ? { ...plato, precio_pendiente: plato.precio > 0 ? false : plato.precio_pendiente } : p) })),
+      actualizarPlato: (plato) => {
+        const anterior = get().platos.find(p => p.id === plato.id)
+        set(s => ({ platos: s.platos.map(p => p.id === plato.id ? { ...plato, precio_pendiente: plato.precio > 0 ? false : plato.precio_pendiente } : p) }))
+        // Sólo se anota el cambio de precio. Corregir una descripción no le
+        // interesa a nadie; que un plato pase de 8.400 a 3.000, sí.
+        if (anterior && anterior.precio !== plato.precio) {
+          get().registrarEnBitacora({
+            area: 'carta',
+            nivel: 'aviso',
+            accion: 'Cambió un precio',
+            detalle: `${plato.nombre}: ${formatPrecio(anterior.precio)} → ${formatPrecio(plato.precio)}`,
+          })
+        }
+      },
       agregarPlato: (platoData) => {
         const plato: Plato = { ...platoData, id: 'p' + generarId(), rating: 0, total_reviews: 0 }
         set(s => ({ platos: [...s.platos, plato] }))
+        get().registrarEnBitacora({ area: 'carta', accion: 'Agregó un plato', detalle: `${plato.nombre} · ${formatPrecio(plato.precio)}` })
       },
-      eliminarPlato: (platoId) => set(s => ({ platos: s.platos.filter(p => p.id !== platoId) })),
+      eliminarPlato: (platoId) => {
+        const plato = get().platos.find(p => p.id === platoId)
+        set(s => ({ platos: s.platos.filter(p => p.id !== platoId) }))
+        get().registrarEnBitacora({ area: 'carta', nivel: 'aviso', accion: 'Retiró un plato de la carta', detalle: plato?.nombre || platoId })
+      },
       toggleDestacado: (platoId) => set(s => ({ platos: s.platos.map(p => p.id === platoId ? { ...p, destacado: !p.destacado } : p) })),
 
       reordenarPlato: (platoId, destinoId) => {
@@ -988,6 +1057,67 @@ export const useStore = create<AppStore>()(
         }
       },
 
+      bitacora: [],
+
+      registrarEnBitacora: ({ accion, detalle, area, nivel = 'normal' }) => {
+        const s = get()
+        const quien = s.sesionAdmin
+        const evento: EventoBitacora = {
+          id: generarId(),
+          accion,
+          detalle,
+          area,
+          nivel,
+          // Si no hay sesión el cambio vino de un comensal en su mesa: se deja
+          // constancia igual, porque "no sé quién fue" también es información.
+          actor_nombre: quien?.nombre || 'Comensal',
+          actor_email: quien?.email || '',
+          actor_rol: quien?.rol || 'comensal',
+          sucursal_id: s.sucursalActualId,
+          created_at: new Date().toISOString(),
+        }
+        set(estado => ({ bitacora: [evento, ...estado.bitacora].slice(0, TOPE_BITACORA) }))
+      },
+
+      restaurarRespaldo: (respaldo) => {
+        const { datos } = respaldo
+        set(s => ({
+          // Cada campo se aplica sólo si vino con la forma correcta: una copia
+          // vieja o recortada no puede dejar la app sin carta ni sin config.
+          ...(Array.isArray(datos.platos) ? { platos: sincronizarPlatosMessa(datos.platos as Plato[]) } : {}),
+          ...(Array.isArray(datos.categoriasDisponibles) ? { categoriasDisponibles: datos.categoriasDisponibles as Categoria[] } : {}),
+          ...(Array.isArray(datos.tagsDisponibles) ? { tagsDisponibles: datos.tagsDisponibles as string[] } : {}),
+          ...(Array.isArray(datos.insumos) ? { insumos: datos.insumos as Insumo[] } : {}),
+          ...(Array.isArray(datos.reservas) ? { reservas: datos.reservas as Reserva[] } : {}),
+          ...(Array.isArray(datos.gastos) ? { gastos: datos.gastos as Gasto[] } : {}),
+          ...(Array.isArray(datos.cierres) ? { cierres: datos.cierres as CierreDiario[] } : {}),
+          ...(Array.isArray(datos.elementosPlano) ? { elementosPlano: datos.elementosPlano as ElementoPlano[] } : {}),
+          ...(Array.isArray(datos.sucursales) ? { sucursales: datos.sucursales as Sucursal[] } : {}),
+          ...(datos.config ? { config: datos.config as ConfigRestaurante } : {}),
+          ...(datos.tema ? { tema: migrarTema(datos.tema as Tema) } : {}),
+          ...(datos.propinaConfig ? { propinaConfig: datos.propinaConfig as PropinaConfig } : {}),
+          ...(datos.fidelidadConfig ? { fidelidadConfig: datos.fidelidadConfig as FidelidadConfig } : {}),
+          ...(Array.isArray(datos.recompensasFidelidad) ? { recompensasFidelidad: datos.recompensasFidelidad as RecompensaFidelidad[] } : {}),
+          ...(Array.isArray(datos.deliveryIntegraciones) ? { deliveryIntegraciones: datos.deliveryIntegraciones as ConfigDelivery[] } : {}),
+          // El plano de las mesas se recupera, pero NO su estado: si ahora hay
+          // gente sentada, una copia de anteayer no puede dejarlas libres.
+          ...(Array.isArray(datos.mesas) ? {
+            mesas: s.mesas.map(actual => {
+              const guardada = (datos.mesas as Mesa[]).find(m => m.id === actual.id)
+              if (!guardada) return actual
+              const { nombre, pos_x, pos_y, ancho, alto, forma, capacidad } = guardada
+              return { ...actual, nombre, pos_x, pos_y, ancho, alto, forma, capacidad }
+            }),
+          } : {}),
+        }))
+        get().registrarEnBitacora({
+          area: 'sistema',
+          nivel: 'alerta',
+          accion: 'Restauró una copia de seguridad',
+          detalle: `Copia del ${new Date(respaldo.creado_en).toLocaleString('es-AR')}`,
+        })
+      },
+
       aplicarEstadoRemoto: (cambios) => {
         if (!cambios.length) return
         set(s => {
@@ -996,7 +1126,8 @@ export const useStore = create<AppStore>()(
           const pedidos = new Map(s.pedidos.map(p => [p.id, p]))
           const llamados = new Map(s.llamadosMozo.map(l => [l.id, l]))
           const elementos = new Map(s.elementosPlano.map(e => [e.id, e]))
-          let tocoMesas = false, tocoPedidos = false, tocoLlamados = false, tocoElementos = false
+          const bitacora = new Map(s.bitacora.map(e => [e.id, e]))
+          let tocoMesas = false, tocoPedidos = false, tocoLlamados = false, tocoElementos = false, tocoBitacora = false
 
           const masNuevo = (local: { updated_at?: string; created_at?: string } | undefined, remotoSello: string) => {
             if (!local) return true
@@ -1017,6 +1148,12 @@ export const useStore = create<AppStore>()(
               if (!masNuevo(pedidos.get(cambio.id), cambio.updated_at)) continue
               pedidos.set(cambio.id, remoto)
               tocoPedidos = true
+            } else if (cambio.tipo === 'bitacora') {
+              // Sólo se agrega. Una línea que ya está no se toca nunca: el
+              // valor de la bitácora es justamente que nadie la pueda reescribir.
+              if (bitacora.has(cambio.id)) continue
+              bitacora.set(cambio.id, cambio.payload as EventoBitacora)
+              tocoBitacora = true
             } else if (cambio.tipo === 'elemento') {
               const remoto = cambio.payload as ElementoPlano
               const local = elementos.get(cambio.id)
@@ -1040,6 +1177,11 @@ export const useStore = create<AppStore>()(
             ...(tocoPedidos ? { pedidos: [...pedidos.values()] } : {}),
             ...(tocoLlamados ? { llamadosMozo: [...llamados.values()] } : {}),
             ...(tocoElementos ? { elementosPlano: [...elementos.values()] } : {}),
+            ...(tocoBitacora ? {
+              bitacora: [...bitacora.values()]
+                .sort((a, b) => b.created_at.localeCompare(a.created_at))
+                .slice(0, TOPE_BITACORA),
+            } : {}),
           }
         })
       },
@@ -1072,11 +1214,24 @@ export const useStore = create<AppStore>()(
           created_at: new Date().toISOString()
         }
         set(s => ({ cierres: [...s.cierres, cierre], config: { ...s.config, caja_abierta: false, fecha_apertura_caja: '' } }))
+        get().registrarEnBitacora({
+          area: 'caja',
+          accion: 'Cerró la caja',
+          detalle: `${formatPrecio(totalVentas)} en ${pedidosHoy.length} pedidos · ${mesasAtendidas} mesas`,
+        })
         return cierre
       },
 
       crearReserva: (r) => { const reserva: Reserva = { ...r, id: generarId(), estado: 'pendiente', created_at: new Date().toISOString() }; set(s => ({ reservas: [...s.reservas, reserva] })) },
-      cancelarReserva: (id) => set(s => ({ reservas: s.reservas.map(r => r.id === id ? { ...r, estado: 'cancelada' as const } : r) })),
+      cancelarReserva: (id) => {
+        const reserva = get().reservas.find(r => r.id === id)
+        set(s => ({ reservas: s.reservas.map(r => r.id === id ? { ...r, estado: 'cancelada' as const } : r) }))
+        get().registrarEnBitacora({
+          area: 'reservas',
+          accion: 'Canceló una reserva',
+          detalle: reserva ? `${reserva.nombre} · ${reserva.fecha} ${reserva.hora} · ${reserva.personas} personas` : id,
+        })
+      },
       confirmarReserva: (id) => set(s => ({ reservas: s.reservas.map(r => r.id === id ? { ...r, estado: 'confirmada' as const } : r) })),
 
       agregarNotificacion: (tipo, mensaje, mesa_numero) => {
@@ -1126,8 +1281,22 @@ export const useStore = create<AppStore>()(
       actualizarDeliveryIntegracion: (id, datos) => set(s => ({ deliveryIntegraciones: s.deliveryIntegraciones.map(d => d.id === id ? { ...d, ...datos } : d) })),
 
       // ── FINANZAS ──
-      agregarGasto: (g) => { const gasto: Gasto = { ...g, id: generarId(), created_at: new Date().toISOString() }; set(s => ({ gastos: [...s.gastos, gasto] })) },
-      eliminarGasto: (id) => set(s => ({ gastos: s.gastos.filter(g => g.id !== id) })),
+      agregarGasto: (g) => {
+        const gasto: Gasto = { ...g, id: generarId(), created_at: new Date().toISOString() }
+        set(s => ({ gastos: [...s.gastos, gasto] }))
+        get().registrarEnBitacora({ area: 'caja', accion: 'Registró un gasto', detalle: `${gasto.descripcion} · ${formatPrecio(gasto.monto)}` })
+      },
+      eliminarGasto: (id) => {
+        const gasto = get().gastos.find(g => g.id === id)
+        set(s => ({ gastos: s.gastos.filter(g => g.id !== id) }))
+        // Borrar un gasto ya cargado cambia el resultado del día: va como aviso.
+        get().registrarEnBitacora({
+          area: 'caja',
+          nivel: 'aviso',
+          accion: 'Borró un gasto',
+          detalle: gasto ? `${gasto.descripcion} · ${formatPrecio(gasto.monto)}` : id,
+        })
+      },
 
       // ── FIDELIDAD ──
       actualizarFidelidadConfig: (cfg) => set(s => ({ fidelidadConfig: { ...s.fidelidadConfig, ...cfg } })),
