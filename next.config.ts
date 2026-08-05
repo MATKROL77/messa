@@ -18,19 +18,25 @@ const basePath = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '')
 /**
  * Cabeceras de seguridad.
  *
- * La más importante es `X-Frame-Options`: sin ella cualquiera puede meter el
+ * La más importante es `frame-ancestors`: sin ella cualquiera puede meter el
  * panel dentro de un iframe en su propia web, ponerle botones encima y lograr
  * que un empleado apriete cosas que no ve. Se llama clickjacking y es la única
  * de estas que se explota sin necesitar nada más.
+ *
+ * Se permite exactamente un origen —el portfolio, que muestra MESSA
+ * funcionando— y se bloquea el resto. No se usa `X-Frame-Options` porque sólo
+ * entiende "nadie" o "el mismo dominio": no admite una lista de permitidos, y
+ * dejarla puesta anularía el permiso.
  *
  * La CSP no lleva `script-src` estricto a propósito: Next inyecta scripts en
  * línea para hidratar la página, y prohibirlos sin nonce rompería la app
  * entera. Lo que sí cierra es de dónde pueden venir los datos y quién puede
  * enmarcarnos, que es lo que aporta valor real acá.
  */
+/** El único sitio ajeno que puede mostrar MESSA dentro de un iframe. */
+const ORIGEN_QUE_PUEDE_EMBEBER = 'https://portfolio.matiascolimodio.workers.dev'
+
 const CABECERAS_SEGURIDAD = [
-  // Nadie puede enmarcar la app dentro de otra web.
-  { key: 'X-Frame-Options', value: 'DENY' },
   // El navegador respeta el Content-Type declarado y no adivina.
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   // Un año de HTTPS obligatorio para este dominio.
@@ -54,7 +60,7 @@ const CABECERAS_SEGURIDAD = [
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'none'",
+      `frame-ancestors 'self' ${ORIGEN_QUE_PUEDE_EMBEBER}`,
     ].join('; '),
   },
 ]

@@ -30,7 +30,16 @@ export async function POST() {
   res.cookies.set('mf_session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    // 'none' deja que la cookie viaje cuando MESSA se muestra dentro de un
+    // iframe de otro dominio —el portfolio—, cosa que 'lax' prohíbe. Sólo se
+    // usa para la vitrina: relajarlo abre la puerta a peticiones desde otro
+    // sitio, y en una cuenta que no puede escribir nada eso no significa nada.
+    // Las cuentas reales del restaurante se quedan en 'lax'.
+    //
+    // El navegador exige HTTPS para aceptar 'none'; en local, sobre HTTP, cae
+    // a 'lax' y el iframe cruzado no funciona, que es sólo un límite de
+    // desarrollo.
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/',
     maxAge: 60 * 60 * 2,
   })
