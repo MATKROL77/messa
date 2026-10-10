@@ -6053,3 +6053,103 @@ html[data-admin-theme="light"] .messa-vitrina__icono { background: color-mix(in 
   .messa-planes__titulo span { display: none; }
   .messa-planes__boton { padding: 8px 14px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PRODUCTOS EN EL CELULAR
+   El plato flotando por encima de la tarjeta es la firma de MESSA y en
+   una pantalla grande funciona: hay aire de sobra. En un teléfono no.
+   Con dos columnas la tarjeta mide 177 px, el plato le pasa por encima
+   al borde, choca con la barra superior pegajosa y obliga a dejar 70-86
+   px de hueco entre filas que no son más que vacío.
+   Así que en el teléfono el plato entra DENTRO de la tarjeta. Se pierde
+   el truco visual y se gana lo que importa cuando alguien está pidiendo:
+   cada producto es una pieza entera, compacta y legible.
+   ══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 560px) {
+  .dish-editorial-card--portrait {
+    /* El cero es lo que trae la foto hacia adentro. Todo lo demás —el
+       padding del texto— se deriva solo, porque ya estaba escrito en
+       función de estas variables. */
+    --card-float: 0px;
+    --card-media: 112px;
+    --card-aire: 10px;
+    padding-top: 0;
+  }
+  .dish-editorial-card--portrait.dish-editorial-card--beverage { --card-media: 88px; }
+  .dish-editorial-card--portrait.dish-editorial-card--media-horizontal { --card-media: 140px; }
+
+  /* La foto, centrada arriba y con su respiro. */
+  .dish-editorial-card--portrait .dish-editorial-card__media-layer { top: 10px; }
+  .dish-editorial-card--portrait .dish-editorial-card__surface {
+    padding: calc(var(--card-media-h) + 20px) 11px 12px;
+  }
+  /* La sombra del plato acompaña a la foto hacia adentro. */
+  .dish-editorial-card--portrait .dish-editorial-card__media-shadow { bottom: auto; top: calc(var(--card-media-h) + 2px); }
+
+  /* Sin nada volando, el hueco entre filas vuelve a ser sólo separación. */
+  .dish-grid { gap: 11px 10px; padding-top: 0; }
+  .dish-editorial-card { min-height: 0; }
+
+  /* Dos líneas de título antes de cortar: a 177 px casi ningún plato
+     entra en una, y cortar en la primera deja "Burrata con…". */
+  .dish-editorial-card--portrait .dish-editorial-card__surface h3 {
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    font-size: 13.5px;
+    line-height: 1.25;
+    overflow: hidden;
+  }
+  .dish-editorial-card--portrait .dish-editorial-card__surface > p {
+    -webkit-line-clamp: 2;
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+  /* El botón de agregar no se achica: es el que hay que poder tocar. */
+  .dish-editorial-card__title-row .icon-button { flex-basis: 36px; height: 36px; width: 36px; }
+}
+
+/* ── El editor de la carta, mismo criterio ──
+   Acá era peor: la foto asomaba 68 px y se metía debajo de la barra
+   superior pegajosa, que la tapaba a la mitad. */
+@media (max-width: 760px) {
+  .messa-admin-product-grid {
+    --producto-vuelo: 0px;
+    --producto-aire: 12px;
+    padding-top: 0;
+  }
+  .messa-admin-product {
+    /* La altura la decide el contenido: el mínimo fijo dejaba un bloque
+       de nada entre la descripción y el precio. */
+    min-height: 0;
+    padding-top: 150px;
+  }
+  .messa-admin-product__media {
+    height: 138px;
+    top: 10px;
+    width: min(62%, 158px);
+  }
+  /* El alto mínimo del cuerpo existe para que dos tarjetas de la misma fila
+     alineen su precio. Con una sola columna no hay fila que alinear: lo único
+     que hace es dejar 140 px de nada entre la descripción y el precio. */
+  .messa-admin-product__body { min-height: 0; }
+}
+
+/* ── El cambio de tema, fuera del contenido ──
+   Flotaba abajo a la izquierda y, con las tarjetas a lo ancho de la
+   pantalla, siempre terminaba encima de algo: en el editor tapaba el
+   precio. Sube a la barra superior, al lado de la campana, donde hay
+   lugar vacío y no cubre nada. */
+@media (max-width: 620px) {
+  .admin-dock-stack .admin-theme-switch {
+    bottom: auto;
+    height: 32px;
+    left: auto;
+    right: 70px;
+    top: 20px;
+    width: 52px;
+    z-index: 402;
+  }
+  .admin-dock-stack .admin-theme-switch i { height: 24px; width: 22px; }
+}
