@@ -5,6 +5,7 @@ import { Mesa, MesaEstado, Pedido, Plato, ItemPedido, Sesion, Insumo, ConfigRest
 import { getMesasMock, insumosIniciales, platosIniciales, configInicial, tagsIniciales, propinaConfigInicial, temaInicial, sucursalesIniciales, categoriasIniciales, deliveryIntegracionesIniciales, fidelidadConfigInicial, recompensasFidelidadIniciales, MESSA_DORADO, VERDE_HEREDADO } from '@/lib/data'
 import { generarId, obtenerDispositivoId, formatPrecio } from '@/lib/utils'
 import type { Respaldo } from '@/lib/respaldo'
+import { esNivel, type NivelPlan } from '@/lib/planes'
 import { normalizarTagRfid } from '@/lib/mesa-codigo'
 import { withBasePath } from '@/lib/base-path'
 
@@ -227,6 +228,13 @@ interface AppStore {
   permisosAdmin: Record<RolUsuario, PermisoAdmin[]>
   permisosVersion: number
 
+  /**
+   * Qué nivel de MESSA tiene contratado este restaurante. Decide qué módulos
+   * del panel existen y qué puede hacer el comensal desde su teléfono.
+   */
+  nivelPlan: NivelPlan
+  setNivelPlan: (nivel: NivelPlan) => void
+
   initStore: () => void
   iniciarSesionMesa: (mesaId: string, mesaNumero: number) => void
   iniciarSesionStaff: (mesaId: string, mesaNumero: number) => void
@@ -402,6 +410,7 @@ export const useStore = create<AppStore>()(
       elementosPlano: [],
       permisosAdmin: PERMISOS_ADMIN_DEFAULT,
       permisosVersion: 5,
+      nivelPlan: 'completo',
 
         initStore: () => {
           set(state => ({
@@ -430,6 +439,10 @@ export const useStore = create<AppStore>()(
             // Antes quedaba clavado en 3 y las migraciones de la 4 se repetían
             // en cada arranque. Ahora sí avanza.
             permisosVersion: 5,
+            // El nivel contratado NO se repone acá: lo decide el dueño (o lo
+            // trae la sincronización). Reiniciarlo en cada arranque le
+            // devolvería el panel completo a quien compró el básico.
+            nivelPlan: esNivel(state.nivelPlan) ? state.nivelPlan : 'completo',
           }))
         },
 
@@ -1024,7 +1037,7 @@ export const useStore = create<AppStore>()(
           config: s.config, tema: s.tema, propinaConfig: s.propinaConfig,
           fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad,
           permisosAdmin: s.permisosAdmin, deliveryIntegraciones: s.deliveryIntegraciones,
-          sucursales: s.sucursales,
+          sucursales: s.sucursales, nivelPlan: s.nivelPlan,
         }
         return null
       },
@@ -1068,6 +1081,7 @@ export const useStore = create<AppStore>()(
             } : {}),
             ...(Array.isArray(payload.deliveryIntegraciones) ? { deliveryIntegraciones: payload.deliveryIntegraciones as ConfigDelivery[] } : {}),
             ...(Array.isArray(payload.sucursales) ? { sucursales: payload.sucursales as Sucursal[] } : {}),
+            ...(esNivel(payload.nivelPlan) ? { nivelPlan: payload.nivelPlan } : {}),
           }
           return {}
         })
@@ -1262,6 +1276,11 @@ export const useStore = create<AppStore>()(
       marcarNotificacionLeida: (id) => set(s => ({ notificaciones: s.notificaciones.map(n => n.id === id ? { ...n, leida: true } : n) })),
       limpiarNotificaciones: () => set({ notificaciones: [] }),
 
+      setNivelPlan: (nivel) => {
+        if (get().nivelPlan === nivel) return
+        set({ nivelPlan: nivel })
+      },
+
       setOrganizacionActual: (id) => set(estado => (
         estado.organizacionActualId === id
           ? {}
@@ -1366,6 +1385,6 @@ export const useStore = create<AppStore>()(
         return { ok: true }
       },
     }),
-    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, pagosParciales: s.pagosParciales, elementosPlano: s.elementosPlano, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
+    { name: MESSA_STORAGE_KEY, partialize: s => ({ dispositivoId: s.dispositivoId, sesion: s.sesion, carrito: s.carrito, mesas: s.mesas, pedidos: s.pedidos, reservas: s.reservas, platos: s.platos, insumos: s.insumos, config: s.config, cierres: s.cierres, notificaciones: s.notificaciones, tagsDisponibles: s.tagsDisponibles, categoriasDisponibles: s.categoriasDisponibles, propinaConfig: s.propinaConfig, tema: s.tema, llamadosMozo: s.llamadosMozo, sucursales: s.sucursales, sucursalActualId: s.sucursalActualId, deliveryIntegraciones: s.deliveryIntegraciones, gastos: s.gastos, costoInsumosConsumidoHistorico: s.costoInsumosConsumidoHistorico, fidelidadConfig: s.fidelidadConfig, recompensasFidelidad: s.recompensasFidelidad, puntosClientes: s.puntosClientes, resenasEnviadas: s.resenasEnviadas, ultimaCuentaPagada: s.ultimaCuentaPagada, pagosParciales: s.pagosParciales, elementosPlano: s.elementosPlano, permisosAdmin: s.permisosAdmin, permisosVersion: s.permisosVersion, nivelPlan: s.nivelPlan, organizacionActualId: s.organizacionActualId, paneraPromptShown: s.paneraPromptShown, panera_aceptada: s.panera_aceptada }) }
   )
 )

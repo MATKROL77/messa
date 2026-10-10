@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LockKeyhole, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, ScrollText, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
+import { Bell, Building2, CalendarDays, ChartLine, Check, ChefHat, ChevronDown, CircleUserRound, CreditCard, Crown, ExternalLink, LayoutDashboard, LockKeyhole, LogOut, MapPinned, Package, PackageSearch, Palette, ReceiptText, ScrollText, Sparkles, Store, Trash2, UsersRound, UtensilsCrossed, X } from 'lucide-react'
 import { useStore, type PermisoAdmin } from '@/lib/store'
 import type { RolUsuario } from '@/types'
 import MessaWordmark from '@/components/messa-wordmark'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import AvisoConexion from '@/components/admin/aviso-conexion'
 import AvisoVitrina from '@/components/admin/aviso-vitrina'
+import SelectorPlan from '@/components/admin/selector-plan'
+import { ETIQUETA_NIVEL, nivelIncluye } from '@/lib/planes'
 import { limpiarIconoLegacy } from '@/lib/utils'
 import { MODO_VISTA_PREVIA } from '@/lib/mesa-codigo-preview'
 import { withBasePath } from '@/lib/base-path'
@@ -95,7 +97,7 @@ function DockLink({ item, pathname }: { item: DockItem; pathname: string }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual, notificaciones, marcarNotificacionLeida, limpiarNotificaciones, permisosAdmin, initStore } = useStore()
+  const { sesionAdmin, setSesionAdmin, logoutAdmin, sucursales, sucursalActualId, setSucursalActual, notificaciones, marcarNotificacionLeida, limpiarNotificaciones, permisosAdmin, initStore, nivelPlan } = useStore()
   // Un solo ciclo de sincronización para TODO el panel: mesas, pedidos,
   // llamados, plano, carta, stock, agenda, finanzas y ajustes. Va acá porque
   // todas las pantallas —incluidas /dashboard, /cocina y /reservas— terminan
@@ -168,13 +170,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (regla && !permisosAdmin[sesionAdmin.rol]?.includes(regla.permiso)) {
     return <div className="admin-access-state"><h2>No tenés permisos</h2><p>Tu rol de {ROL_LABEL[sesionAdmin.rol].label} no tiene acceso a esta sección.</p><Link href="/admin" className="admin-primary-link">Volver al panel</Link></div>
   }
+  // Entrar por la URL a un módulo que el plan no incluye. Se distingue a
+  // propósito de "no tenés permisos": no es un problema de la persona, es algo
+  // que el restaurante todavía no contrató, y decirlo así es la diferencia
+  // entre un error y una oportunidad de venta.
+  if (regla && !nivelIncluye(nivelPlan, regla.permiso)) {
+    return (
+      <div className="admin-access-state">
+        <Sparkles size={38} />
+        <h2>No está en tu plan</h2>
+        <p>
+          Tu restaurante tiene <strong>{ETIQUETA_NIVEL[nivelPlan].nombre}</strong>.
+          Esta sección entra con un plan superior.
+        </p>
+        <Link href="/admin" className="admin-primary-link">Volver al panel</Link>
+      </div>
+    )
+  }
 
   const puedeCambiarSucursal = sesionAdmin.rol === 'creator' || sesionAdmin.rol === 'admin'
   const sucursalActual = sucursales.find(sucursal => sucursal.id === sucursalActualId)
   const esStaff = sesionAdmin.rol === 'staff'
   const permisosDelRol = permisosAdmin[sesionAdmin.rol] || []
-  const operacionVisible = OPERACION.filter(item => permisosDelRol.includes(permisoDeItem(item)))
-  const gestionVisible = GESTION.filter(item => permisosDelRol.includes(permisoDeItem(item)))
+  // Dos filtros encadenados, y el orden importa para entender un "no está":
+  // el ROL dice qué puede ver esta persona, el NIVEL qué compró el
+  // restaurante. Un módulo aparece sólo si pasa los dos.
+  const puede = (permiso: PermisoAdmin) => permisosDelRol.includes(permiso) && nivelIncluye(nivelPlan, permiso)
+  const disponible = (item: DockItem) => puede(permisoDeItem(item))
+  const operacionVisible = OPERACION.filter(disponible)
+  const gestionVisible = GESTION.filter(disponible)
   const alertasPendientes = notificaciones.filter(notificacion => !notificacion.leida)
   const moduloActivo = [...OPERACION, ...GESTION].find(item => isCurrentPath(pathname, item))
   const moduloExpandido = pathname !== '/admin'
@@ -183,7 +207,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="admin-shell">
       <div className="admin-ambient" aria-hidden="true" />
       <AvisoConexion />
-      <AvisoVitrina />
       {MODO_VISTA_PREVIA && (
         <p className="admin-preview-banner" role="status">
           Vista previa estática · datos de demostración, sin servidor. El login real, los pagos y los códigos de mesa firmados funcionan en el despliegue completo.
@@ -235,13 +258,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
+        <AvisoVitrina />
+        <SelectorPlan />
+
         <nav className="admin-quick-dock" aria-label="Acciones operativas rápidas">
-          {permisosDelRol.includes('carta') && <Link href="/admin/carta"><UtensilsCrossed size={16} />Editar carta</Link>}
-          {permisosDelRol.includes('salon') && <Link href="/dashboard"><MapPinned size={16} />Abrir salón</Link>}
-          {permisosDelRol.includes('pedidos') && <Link href="/cocina"><ChefHat size={16} />Ver pedidos</Link>}
-          {permisosDelRol.includes('reservas') && <Link href="/reservas"><CalendarDays size={16} />Reservas</Link>}
-          {permisosDelRol.includes('caja') && <Link href="/admin/cierre"><ReceiptText size={16} />Cierre</Link>}
-          {permisosDelRol.includes('inventario') && <Link href="/admin/stock"><Bell size={16} />Inventario</Link>}
+          {puede('carta') && <Link href="/admin/carta"><UtensilsCrossed size={16} />Editar carta</Link>}
+          {puede('salon') && <Link href="/dashboard"><MapPinned size={16} />Abrir salón</Link>}
+          {puede('pedidos') && <Link href="/cocina"><ChefHat size={16} />Ver pedidos</Link>}
+          {puede('reservas') && <Link href="/reservas"><CalendarDays size={16} />Reservas</Link>}
+          {puede('caja') && <Link href="/admin/cierre"><ReceiptText size={16} />Cierre</Link>}
+          {puede('inventario') && <Link href="/admin/stock"><Bell size={16} />Inventario</Link>}
         </nav>
 
         <div className={`admin-content-frame${moduloExpandido ? ' is-module' : ''}`}>

@@ -5596,7 +5596,11 @@ html[data-admin-theme="light"] .messa-reorder-handle { border-color: #fffdf9; }
   /* Debajo de las hojas modales: un aviso nunca puede tapar una confirmación. */
   top: calc(env(safe-area-inset-top, 0px) + 12px);
   transform: translateX(-50%);
-  z-index: 60;
+  /* Por encima del chrome del panel (topbar 400, dock 401) y por debajo de
+     los modales (1000+): un aviso flotante tiene que verse y poder tocarse,
+     pero nunca tapar una confirmación. Con z-index 58 lo cubría el dock de
+     accesos rápidos, que está en 350, y el cartel quedaba inerte. */
+  z-index: 405;
 }
 @keyframes messa-baja-aviso {
   from { opacity: 0; transform: translate(-50%, -14px); }
@@ -5935,13 +5939,12 @@ html[data-menu-theme="dark"] select option:disabled {
   box-shadow: 0 18px 40px rgba(0, 0, 0, .32);
   display: flex;
   gap: 11px;
-  left: 50%;
-  max-width: min(460px, calc(100vw - 24px));
+  /* En el flujo, igual que el selector de plan: flotando tapaba la barra
+     superior justo donde está el cambio de sucursal. */
+  margin: 0 0 10px;
   padding: 11px 15px;
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
-  transform: translateX(-50%);
-  z-index: 59;
+  position: relative;
+  z-index: 6;
 }
 .messa-vitrina__icono {
   align-items: center;
@@ -5972,3 +5975,81 @@ html[data-admin-theme="light"] .messa-vitrina__icono { background: color-mix(in 
 .messa-vitrina ~ .messa-sin-conexion { top: calc(env(safe-area-inset-top, 0px) + 74px); }
 
 @media (prefers-reduced-motion: reduce) { .messa-vitrina { animation: none; } }
+
+/* ══════════════════════════════════════════════════════════════
+   SELECTOR DE PLAN
+   Tres niveles, uno al lado del otro, para mostrarlos en la misma
+   pantalla. Va arriba de todo porque es lo primero que se explica en
+   una venta: qué incluye cada precio.
+   ══════════════════════════════════════════════════════════════ */
+
+.messa-planes {
+  align-items: center;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: color-mix(in srgb, var(--admin-surface-strong) 92%, transparent);
+  border: 1px solid var(--admin-border);
+  border-radius: 20px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .26);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: center;
+  /* En el flujo, no flotando: como capa fija se superponía al dock de
+     accesos rápidos y sus botones quedaban inertes. Acá empuja el contenido
+     hacia abajo y no tapa nada. */
+  margin: 0 0 12px;
+  padding: 11px 16px;
+  position: relative;
+  z-index: 6;
+}
+
+.messa-planes__titulo { display: flex; flex-direction: column; gap: 1px; margin: 0; }
+.messa-planes__titulo span { color: var(--admin-text-muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.messa-planes__titulo strong { color: var(--admin-text); font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+
+.messa-planes__botones {
+  background: color-mix(in srgb, var(--admin-surface) 70%, transparent);
+  border-radius: 999px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+}
+.messa-planes__boton {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: 8px 17px;
+  transition: background .3s var(--ios-ease, cubic-bezier(.32, .72, 0, 1)), color .3s;
+}
+.messa-planes__boton:hover { color: var(--admin-text); }
+/* El nivel que se está mostrando va lleno: es estado, no una opción más. */
+.messa-planes__boton.is-actual {
+  background: var(--messa-accent);
+  color: #1b1a16;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--messa-accent) 42%, transparent);
+}
+
+/* La frase que explica el nivel baja a su propio renglón: es lo que se lee
+   en voz alta al mostrarlo, no una etiqueta más de la fila. */
+.messa-planes__resumen {
+  color: var(--admin-text-muted);
+  flex-basis: 100%;
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin: 0;
+  text-align: center;
+}
+
+
+@media (max-width: 760px) {
+  .messa-planes { gap: 8px 12px; padding: 9px 13px; }
+  .messa-planes__titulo { align-items: center; flex-basis: 100%; }
+  .messa-planes__titulo span { display: none; }
+  .messa-planes__boton { padding: 8px 14px; }
+}

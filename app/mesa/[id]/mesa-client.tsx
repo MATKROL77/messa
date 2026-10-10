@@ -39,6 +39,7 @@ import TableAccessGate from '@/components/menu/TableAccessGate'
 import { accesoRecordado, olvidarAcceso, recordarAcceso, validarCodigoDeMesa } from '@/lib/acceso-mesa'
 import { withBasePath } from '@/lib/base-path'
 import { useSyncOperativo } from '@/lib/use-sync-operativo'
+import { capacidades } from '@/lib/planes'
 import { useCartaPublica } from '@/lib/use-carta-publica'
 
 type VistaAll = 'menu' | 'carrito' | 'pago' | 'reviews'
@@ -150,7 +151,7 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
   const searchParams = useSearchParams()
   /** El código en la URL lo pone el escaneo del QR, no una recarga cualquiera. */
   const llegaDesdeElQr = Boolean(searchParams.get('c') || searchParams.get('codigo'))
-  const { sesion, esStaff, mesas, carrito, pedidos, platos, config, categoriasDisponibles, initStore, iniciarSesionMesa, iniciarSesionStaff, abandonarMesa, confirmarPedido, marcarComoPagado, registrarPagoParcial, saldoPendienteMesa, prepararPagoManual, setModoPostPago, reabrirMesa, agregarAlCarrito, quitarDelCarrito, actualizarCantidad, setPaneraAceptada, panera_aceptada, llamarMozo, propinaConfig, paneraPromptShown, fidelidadConfig, resenasEnviadas, ultimaCuentaPagada, enviarResena } = useStore()
+  const { sesion, esStaff, mesas, carrito, pedidos, platos, config, categoriasDisponibles, initStore, iniciarSesionMesa, iniciarSesionStaff, abandonarMesa, confirmarPedido, marcarComoPagado, registrarPagoParcial, saldoPendienteMesa, prepararPagoManual, setModoPostPago, reabrirMesa, agregarAlCarrito, quitarDelCarrito, actualizarCantidad, setPaneraAceptada, panera_aceptada, llamarMozo, propinaConfig, paneraPromptShown, fidelidadConfig, resenasEnviadas, ultimaCuentaPagada, enviarResena, nivelPlan } = useStore()
 
   const mesa = mesas.find(m => m.id === mesaId)
   const [vista, setVista] = useState<VistaAll>('menu')
@@ -217,6 +218,13 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
   const pedidosPagados = pedidosMesa.filter(p => idsUltimaCuenta.includes(p.id) && p.estado === 'pagado' && p.confirmado_staff !== false)
   const yaHayPedido = pedidosEnCocina.length > 0
   const esPostPago = sesion?.modo === 'post_pago'
+  // Lo que el nivel contratado deja hacer desde el teléfono. En el básico la
+  // app ES la carta: se mira y se llama al mozo, igual que con la carta de
+  // papel pero actualizable. Pedir y pagar entran con los planes de arriba.
+  const { pedidoDesdeLaMesa, pagoDigital } = capacidades(nivelPlan)
+  const soloCarta = !pedidoDesdeLaMesa
+  /** No se puede sumar nada al pedido: o ya se pagó, o este plan no pide. */
+  const sinPedir = esPostPago || soloCarta
   const mesaNumero = mesa?.numero || parseInt(mesaId.replace('m', '')) || 1
   const cantPersonas = mesa?.dispositivos.length || 1
 
@@ -357,6 +365,7 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
   }
 
   const handleAgregarAlCarrito = (plato: Plato) => {
+    if (soloCarta) { showToast('Pedíselo al mozo: tocá el botón de llamar'); return }
     if (esPostPago || sesion?.modo === 'curioso') { showToast('No podés agregar platos en este modo'); return }
     if (plato.precio_pendiente) { showToast('Este producto todavía necesita un precio en Administración'); return }
     const incompleto = plato.modificadores.find(modificador => modificador.obligatorio && !modificador.opciones.some(opcion => modsElegidos.includes(opcion.id)))
@@ -533,10 +542,10 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
       )}
 
       {vista === 'carrito' && <CarritoView carrito={carrito} sesionDispositivoId={sesion?.dispositivo_id || ''} onRemover={quitarDelCarrito} onActualizar={actualizarCantidad} onVolver={() => setVista('menu')} onPedir={handleConfirmarPedido} onIrPago={() => setVista('pago')} pedidoEnviado={pedidoEnviado} paneraAceptada={panera_aceptada} paneraConfig={config.panera} esModoStaff={esModoStaff} />}
-      {vista === 'pago' && !esModoStaff && <PagoView pedidos={pedidosEnCocina} propinaConfig={propinaConfig} pagoCompletado={pagoCompletado} setPagoCompletado={setPagoCompletado} onVolver={() => setVista('menu')} sesionDispositivoId={sesion?.dispositivo_id || ''} mesaId={mesaId} mesaNumero={mesaNumero} config={config} marcarComoPagado={marcarComoPagado} registrarPagoParcial={registrarPagoParcial} yaAportado={saldoPendienteMesa(mesaId).cubierto} prepararPagoManual={prepararPagoManual} setModoPostPago={setModoPostPago} irAResenas={() => setVista('reviews')} onLlamarMozo={handleLlamarMozo} emailPago={emailPago} setEmailPago={setEmailPago} acreditarPuntos={acreditarPuntosDeCuenta} />}
+      {vista === 'pago' && !esModoStaff && <PagoView pedidos={pedidosEnCocina} propinaConfig={propinaConfig} pagoCompletado={pagoCompletado} setPagoCompletado={setPagoCompletado} onVolver={() => setVista('menu')} sesionDispositivoId={sesion?.dispositivo_id || ''} mesaId={mesaId} mesaNumero={mesaNumero} config={config} marcarComoPagado={marcarComoPagado} registrarPagoParcial={registrarPagoParcial} yaAportado={saldoPendienteMesa(mesaId).cubierto} prepararPagoManual={prepararPagoManual} setModoPostPago={setModoPostPago} irAResenas={() => setVista('reviews')} onLlamarMozo={handleLlamarMozo} emailPago={emailPago} setEmailPago={setEmailPago} acreditarPuntos={acreditarPuntosDeCuenta} pagoDigital={pagoDigital} cuentaDividida={capacidades(nivelPlan).cuentaDividida} />}
       {vista === 'reviews' && !esModoStaff && <ReviewsView pedidos={pedidosPagados} resenasEnviadas={resenasEnviadas} reviewPlatos={reviewPlatos} setReviewPlatos={setReviewPlatos} onEnviar={handleEnviarResenas} fidelidadHabilitado={fidelidadConfig.habilitado && Boolean(emailPago)} puntosPorResena={fidelidadConfig.puntos_por_resena} onVolver={() => setVista('menu')} />}
 
-      {vista === 'menu' && !esPostPago && !esModoStaff && (
+      {vista === 'menu' && (soloCarta || !esPostPago) && !esModoStaff && (
         <button type="button" className="mesa-waiter-trigger" onClick={() => setMostrarLlamarMozo(true)} aria-label="Llamar al equipo de salón">
           <BellRing size={20} />
           <span>Llamar al mozo</span>
@@ -546,7 +555,7 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
       {vista !== 'pago' && (
         <div className="mesa-bottom-nav" role="navigation" aria-label="Navegación de la mesa">
           <NavItem label="Carta" Icon={BookOpen} active={vista === 'menu'} onClick={() => setVista('menu')} />
-          <NavItem buttonRef={pedidoNavRef} className={cartPulse ? 'is-receiving' : ''} label={carrito.length > 0 ? `Pedido (${carrito.length})` : 'Pedido'} Icon={ShoppingBag} active={vista === 'carrito'} onClick={() => setVista('carrito')} badge={carrito.length} disabled={esPostPago} />
+          {!soloCarta && <NavItem buttonRef={pedidoNavRef} className={cartPulse ? 'is-receiving' : ''} label={carrito.length > 0 ? `Pedido (${carrito.length})` : 'Pedido'} Icon={ShoppingBag} active={vista === 'carrito'} onClick={() => setVista('carrito')} badge={carrito.length} disabled={esPostPago} />}
           {yaHayPedido && !esModoStaff && <NavItem label="Pagar" Icon={CreditCard} active={(vista as string) === 'pago'} onClick={() => setVista('pago')} gold />}
         </div>
       )}
@@ -558,7 +567,7 @@ function MesaExperience({ mesaId, esModoStaff }: { mesaId: string; esModoStaff: 
               overflow al desplazarse. */}
           <button type="button" className="mesa-detail-close" onClick={() => setPlatoActivo(null)} aria-label="Cerrar detalle"><X size={19} /></button>
           <div className="slide-up mesa-detail-panel">
-            <DetalleContent plato={platoActivo} ingRemovidos={ingRemovidos} toggleIng={toggleIng} modsElegidos={modsElegidos} toggleModificador={toggleModificador} notas={notas} setNotas={setNotas} mostrarNutri={mostrarNutri} setMostrarNutri={setMostrarNutri} mostrarReviews={mostrarReviews} setMostrarReviews={setMostrarReviews} onAgregar={() => handleAgregarAlCarrito(platoActivo)} onMaridar={(maridaje: Maridaje) => { const producto = platos.find(item => item.id === maridaje.plato_id); if (producto) { agregarAlCarrito(producto, [], ''); showToast(`${maridaje.nombre} agregado`) } }} esPostPago={esPostPago} mostrarNutricion={config.mostrar_nutricion} />
+            <DetalleContent plato={platoActivo} ingRemovidos={ingRemovidos} toggleIng={toggleIng} modsElegidos={modsElegidos} toggleModificador={toggleModificador} notas={notas} setNotas={setNotas} mostrarNutri={mostrarNutri} setMostrarNutri={setMostrarNutri} mostrarReviews={mostrarReviews} setMostrarReviews={setMostrarReviews} onAgregar={() => handleAgregarAlCarrito(platoActivo)} onMaridar={(maridaje: Maridaje) => { const producto = platos.find(item => item.id === maridaje.plato_id); if (producto) { agregarAlCarrito(producto, [], ''); showToast(`${maridaje.nombre} agregado`) } }} esPostPago={sinPedir} soloCarta={soloCarta} mostrarNutricion={config.mostrar_nutricion} />
           </div>
         </div>
       )}
@@ -618,10 +627,11 @@ interface DetalleContentProps {
   onAgregar: () => void
   onMaridar: (maridaje: Maridaje) => void
   esPostPago: boolean
+  soloCarta: boolean
   mostrarNutricion: boolean
 }
 
-function DetalleContent({ plato, ingRemovidos, toggleIng, modsElegidos, toggleModificador, notas, setNotas, mostrarNutri, setMostrarNutri, mostrarReviews, setMostrarReviews, onAgregar, onMaridar, esPostPago, mostrarNutricion }: DetalleContentProps) {
+function DetalleContent({ plato, ingRemovidos, toggleIng, modsElegidos, toggleModificador, notas, setNotas, mostrarNutri, setMostrarNutri, mostrarReviews, setMostrarReviews, onAgregar, onMaridar, esPostPago, soloCarta, mostrarNutricion }: DetalleContentProps) {
   const precioFinal = plato.precio + plato.modificadores
     .flatMap((modificador: Plato['modificadores'][number]) => modificador.opciones)
     .filter((opcion: Plato['modificadores'][number]['opciones'][number]) => modsElegidos.includes(opcion.id))
@@ -712,7 +722,7 @@ function DetalleContent({ plato, ingRemovidos, toggleIng, modsElegidos, toggleMo
           </div>
         )}
 
-        {plato.precio_pendiente ? <div style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.26)', borderRadius: 14, color: 'var(--gold)', fontSize: 13, lineHeight: 1.45, padding: 14, textAlign: 'center' }}>Precio pendiente de configuración.</div> : !esPostPago ? <button onClick={onAgregar} className="mesa-primary-cta">Agregar a la cocina — {formatPrecio(precioFinal)}</button> : <div style={{ textAlign: 'center', color: '#707070', fontSize: 14 }}>Cuenta pagada — Modo exploración</div>}
+        {plato.precio_pendiente ? <div style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.26)', borderRadius: 14, color: 'var(--gold)', fontSize: 13, lineHeight: 1.45, padding: 14, textAlign: 'center' }}>Precio pendiente de configuración.</div> : !esPostPago ? <button onClick={onAgregar} className="mesa-primary-cta">Agregar a la cocina — {formatPrecio(precioFinal)}</button> : <div style={{ textAlign: 'center', color: '#707070', fontSize: 14 }}>{soloCarta ? 'Pedíselo al mozo' : 'Cuenta pagada — Modo exploración'}</div>}
       </div>
     </>
   )
@@ -808,9 +818,13 @@ interface PagoViewProps {
   setEmailPago: Dispatch<SetStateAction<string>>
   /** Suma los puntos del consumo a la cuenta del comensal, si tiene una. */
   acreditarPuntos: (monto: number) => void
+  /** Si es false, por la app no se cobra: se avisa a quien cobra. */
+  pagoDigital: boolean
+  /** Si es false, la cuenta no se divide: se paga entera. */
+  cuentaDividida: boolean
 }
 
-function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, onVolver, sesionDispositivoId, mesaId, mesaNumero, marcarComoPagado, registrarPagoParcial, yaAportado, prepararPagoManual, setModoPostPago, irAResenas, onLlamarMozo, emailPago, setEmailPago, acreditarPuntos }: PagoViewProps) {
+function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, onVolver, sesionDispositivoId, mesaId, mesaNumero, marcarComoPagado, registrarPagoParcial, yaAportado, prepararPagoManual, setModoPostPago, irAResenas, onLlamarMozo, emailPago, setEmailPago, acreditarPuntos, pagoDigital, cuentaDividida }: PagoViewProps) {
   const todosItems: ItemPedido[] = pedidos.flatMap(pedido => pedido.items)
   const misItems = todosItems.filter((i: ItemPedido) => i.dispositivo_id === sesionDispositivoId)
   const totalGeneral = todosItems.reduce((acc: number, i: ItemPedido) => acc + i.precio_unitario * i.cantidad, 0)
@@ -959,12 +973,17 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
             )}
           </div>
 
-          <p className="mesa-field-label">¿Cómo dividís la cuenta?</p>
+          <p className="mesa-field-label">{cuentaDividida ? '¿Cómo dividís la cuenta?' : 'Tu cuenta'}</p>
           <div className="mesa-payment-options">
             {[
               { v: 'total', l: 'Pagar todo', s: formatPrecio(totalGeneral), Icon: WalletCards },
-              { v: 'dividido', l: 'Solo lo mío', s: formatPrecio(miTotal), Icon: UserRound },
-              { v: 'partes', l: 'En partes iguales', s: `${formatPrecio(Math.round(totalGeneral / Math.max(1, partes)))} c/u`, Icon: Users },
+              // Dividir la cuenta entra con el plan que deja pedir desde la
+              // mesa: sin pedidos por teléfono no hay forma de saber qué pidió
+              // cada uno, así que ofrecerlo sería mentir.
+              ...(cuentaDividida ? [
+                { v: 'dividido', l: 'Solo lo mío', s: formatPrecio(miTotal), Icon: UserRound },
+                { v: 'partes', l: 'En partes iguales', s: `${formatPrecio(Math.round(totalGeneral / Math.max(1, partes)))} c/u`, Icon: Users },
+              ] : []),
             ].map(o => (
               <button type="button" key={o.v} className={metodoPago === o.v ? 'active' : ''} onClick={() => setMetodoPago(o.v as 'total' | 'dividido' | 'partes')} aria-pressed={metodoPago === o.v}>
                 <o.Icon size={18} />
@@ -1033,9 +1052,14 @@ function PagoView({ pedidos, propinaConfig, pagoCompletado, setPagoCompletado, o
               </div>
 
               <p className="mesa-field-label">Elegí cómo pagar</p>
-              <button type="button" className="mesa-payment-method mesa-payment-method--primary" onClick={() => validarYContinuar('mercadopago')} disabled={cargandoMP}>
-                <WalletCards size={19} /><span><b>{cargandoMP ? 'Conectando con Mercado Pago…' : 'Pagar con Mercado Pago'}</b><small>Pago digital inmediato</small></span>
-              </button>
+              {/* El cobro por la app es del plan completo. En los otros el
+                  botón no se muestra apagado ni con un candado: se ofrece lo
+                  que sí se puede hacer, que es avisarle a quien cobra. */}
+              {pagoDigital && (
+                <button type="button" className="mesa-payment-method mesa-payment-method--primary" onClick={() => validarYContinuar('mercadopago')} disabled={cargandoMP}>
+                  <WalletCards size={19} /><span><b>{cargandoMP ? 'Conectando con Mercado Pago…' : 'Pagar con Mercado Pago'}</b><small>Pago digital inmediato</small></span>
+                </button>
+              )}
               <button type="button" className="mesa-payment-method" onClick={() => validarYContinuar('tarjeta')}>
                 <CreditCard size={19} /><span><b>Tarjeta o efectivo</b><small>El mozo se acerca con el POS o la cuenta</small></span>
               </button>
